@@ -21,9 +21,9 @@
 #define RNUC 3.6
 
 // Technical parameters
-#define COR_FAC 1
-#define RMIN 0.0001
-#define RMAX 5.1
+#define COR_FAC 0
+#define RMIN 0.00001
+#define RMAX 10.1
 #define NSPLINE 10000
 
 // Physical constants

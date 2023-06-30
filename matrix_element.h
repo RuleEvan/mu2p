@@ -1,6 +1,6 @@
 #ifndef MATRIX_ELEMENT_H
 #define MATRIX_ELEMENT_H
-#include "wfn.h"
+#include "brody.h"
 
 // Finite q Spline functions
 void compute_total_matrix_element_GTJ(char* density_file, double q, int J, double alpha, double delta_e, double *m_RE, double *m_IM);
@@ -31,6 +31,7 @@ int get_j(int index);
 
 double cg_fact(int l1, int l2, int k, double Ji, double Jf, int iJn);
 
+int test_suite();
 
 double compute_matrix_element_F1(int ina, int ija, int inb, int ijb, int L, double q);
 double compute_matrix_element_F1_double(int ina, int ija, int inb, int ijb, int L1, double kt, int L2, double qt, int L);

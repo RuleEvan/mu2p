@@ -106,9 +106,9 @@ double talmi_rel(double p, int iv, int J, double qt) {
 double talmi_rel_spline(double p, gsl_spline *f_spline, gsl_interp_accel *acc) {
   // Compute the order p Talmi integral
   // Set the limits of the integral and the error tolerance
-  double r_min = 0.001;
-  double r_max = 5.0;
-  double tol = pow(10, -6);
+  double r_min = 0.0001;
+  double r_max = 10.0;
+  double tol = pow(10, -8);
   double I_p = RombergSpline(&talmi_integrand_spline, r_min, r_max, p, f_spline, acc, tol);
   I_p *= 2.0/gsl_sf_gamma(p + 1.5);
 
@@ -287,6 +287,22 @@ double v_light_limit_d(double r) {
   return v;
 }
 
+
+double HOBesselMatCM(int np, int lp, int n, int l, int J, double q) {
+  double m = sqrt(2.0*gsl_sf_gamma(np + 1.0)/gsl_sf_gamma(np + lp + 1.5));
+  m *= sqrt(2.0*gsl_sf_gamma(n + 1.0)/gsl_sf_gamma(n + l + 1.5));
+  q /= sqrt(2.0);
+
+  double msum = 0.0;
+  for (int i = 0; i <= np; i++) {
+    for (int j = 0; j <= n; j++) {
+      double bin_i = gsl_sf_gamma(np + lp + 1.5)/(gsl_sf_gamma(np - i + 1)*gsl_sf_gamma(lp + i + 1.5));
+      double bin_j = gsl_sf_gamma(n  + l  + 1.5)/(gsl_sf_gamma(n  - j + 1)*gsl_sf_gamma(l  + j + 1.5));
+      msum += bin_i*bin_j*pow(-1.0, i + j)/(gsl_sf_fact(i)*gsl_sf_fact(j))*sqrt(M_PI)*pow(2.0, -2 - J)*pow(q*B_OSC/HBARC, J)*gsl_sf_gamma((J + l + lp + 2*i + 2*j + 3.0)/2.0)*gsl_sf_hyperg_1F1((J + l + lp + 2*i + 2*j + 3.0)/2.0, J + 1.5, -pow(q*B_OSC/HBARC, 2)/4.0)/gsl_sf_gamma(J + 1.5);
+    }
+  }
+  return msum*m;
+}
 
 double v_cm_finite_q(double r, int l, double q) {
   r *= B_OSC*sqrt(2.0);
@@ -667,4 +683,3 @@ double radial_osc_wfn_q(int n, int l, double q, double b) {
 
   return u_nl;
 }
-

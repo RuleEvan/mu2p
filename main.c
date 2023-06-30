@@ -4,9 +4,10 @@ int main(int argc, char *argv[]) {
 
 //  filter_spectrum("mg27_usdb_full_clean.res", 0.5, 1.5);
 //  exit(0);
-
+  test_suite();
+  exit(0);
   FILE *list_file;
-  list_file = fopen("al27_mg27_na27.list", "r");
+  list_file = fopen("lists/al27_mg27_na27.list", "r");
 //  list_file = fopen("f18.list", "r");
 
   char density_file_i[250];
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
 
   double Stot = 0.0;
 
-  list_file = fopen("al27_na27_usdb_J25.list", "r");
+  list_file = fopen("lists/al27_na27_usdb_J25.list", "r");
 
 
   while(fscanf(list_file, "%d, %f, %f\n", &i_state, &tf, &excite) == 3) {

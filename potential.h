@@ -6,6 +6,7 @@ double v_NUC(int J, double pe, double r);
 double talmi_rel_double(double p, int L1, double kt, int L2, double qt);
 double compute_potential_double(double n, double np, double l, double lp, int L1, double kt, int L2, double qt);
 double talmi_integrand_double(double p, int L1, double kt, int L2, double qt, double r);
+double HOBesselMatCM(int np, int lp, int n, int l, int J, double q);
 
 
 double finite_q_alpha_pot_1(double r, int l, double q, double m_pi);

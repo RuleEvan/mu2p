@@ -1101,4 +1101,102 @@ fclose(out_file);
 
 return;
 }
-	
+
+
+int test_suite() {
+  int error = 0;
+  double tol = pow(10, -6);
+  // Check Brody-Moshinsky brackets against values in Table I of Buck & Merchant, Nucl. Phys. A 600 (1996) 387-402
+  if (fabs(+1.00000000 - brody_mosh(0, 0, 0, 0, 0, 0, 0, 0, 0)) > tol) {error = 1; printf("BM Error 1: %g\n", brody_mosh(0, 0, 0, 0, 0, 0, 0, 0, 0));} 
+  if (fabs(-0.41833000 - brody_mosh(1, 0, 0, 2, 2, 0, 1, 0, 3)) > tol) {error = 1; printf("BM Error 2: %g\n", brody_mosh(1, 0, 0, 2, 2, 0, 1, 0, 3));} 
+  if (fabs(+0.50000001 - brody_mosh(0, 5, 0, 1, 6, 0, 1, 0, 5)) > tol) {error = 1; printf("BM Error 3: %g\n", brody_mosh(0, 5, 0, 1, 6, 0, 1, 0, 5));} 
+  if (fabs(-0.00000001 - brody_mosh(0, 3, 0, 1, 4, 0, 2, 0, 2)) > tol) {error = 1; printf("BM Error 4: %g\n", brody_mosh(0, 3, 0, 1, 4, 0, 2, 0, 2));} 
+  if (fabs(+0.29880716 - brody_mosh(0, 1, 1, 3, 3, 0, 2, 0, 4)) > tol) {error = 1; printf("BM Error 5: %g\n", brody_mosh(0, 1, 1, 3, 3, 0, 2, 0, 4));} 
+  if (fabs(+0.11785111 - brody_mosh(0, 2, 0, 5, 4, 0, 2, 0, 5)) > tol) {error = 1; printf("BM Error 6: %g\n", brody_mosh(0, 2, 0, 5, 4, 0, 2, 0, 5));} 
+  if (fabs(-0.19394780 - brody_mosh(1, 6, 0, 3, 4, 2, 2, 1, 3)) > tol) {error = 1; printf("BM Error 7: %g\n", brody_mosh(1, 6, 0, 3, 4, 2, 2, 1, 3));} 
+  if (fabs(-0.07097762 - brody_mosh(2, 5, 1, 0, 5, 2, 2, 1, 3)) > tol) {error = 1; printf("BM Error 8: %g\n", brody_mosh(2, 5, 1, 0, 5, 2, 2, 1, 3));} 
+  if (fabs(-0.13328930 - brody_mosh(4, 2, 0, 2, 2, 2, 2, 1, 4)) > tol) {error = 1; printf("BM Error 9: %g\n", brody_mosh(4, 2, 0, 2, 2, 2, 2, 1, 4));} 
+  if (fabs(+0.09959471 - brody_mosh(0, 4, 3, 2, 4, 2, 2, 1, 4)) > tol) {error = 1; printf("BM Error 10: %g\n", brody_mosh(0, 4, 3, 2, 4, 2, 2, 1, 4));} 
+  if (error) {printf("BM error\n");} else {printf("Brody-Moshinsky Tests: Pass\n");}
+
+  if (COR_FAC) {
+    printf("Two nucleon correlation function is turned ON. Skipping integration tests.\n");}
+  else {
+    for (int J = 0; J <= 2; J++) {
+      for (int iq = 0; iq < 10; iq++) {
+        double q = iq*2.0;
+        gsl_interp_accel *acc = gsl_interp_accel_alloc();
+        gsl_spline *f_spline = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+        double delta_r = (RMAX - RMIN)/(1.0*NSPLINE);
+        double *f_array = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+        double *r_array = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+        for (int i = 0; i <= NSPLINE; i++) {
+          double r = RMIN + i*delta_r;
+          r_array[i] = r;
+          f_array[i] = v_cm_finite_q(r, J, q);
+        }
+
+        gsl_spline_init(f_spline, r_array, f_array, NSPLINE + 1);
+
+        for (int n = 0; n <= 2; n++) {
+          for (int l = 0; l <= 2; l++) {
+            for (int np = 0; np <= 2; np++) {
+              for (int lp = 0; lp <= 2; lp++) {
+                double Mt = compute_rel_potential(np, lp, n, l, J, q, 2);
+		double Mts = compute_rel_potential_spline(np, lp, n, l, f_spline, acc);
+                double MtEx = HOBesselMatCM(np, lp, n, l, J, q);
+                if (fabs(Mt - MtEx) > tol) {error = 1; printf("INT Error: %g %g %g\n", q, Mt, MtEx); exit(0);}
+                if (fabs(Mts - MtEx) > tol) {error = 1; printf("Spline INT Error: %d %d %d %d %d %g %g %g\n", np, lp, n, l, J, q, Mts, MtEx); exit(0);}
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  if (error) {printf("Integration error\n");} else {printf("Integration Tests 1: Pass\n");}
+
+  int n1p = 0;
+  int n2p = 0;
+  int l1p = 0;
+  int l2p = 0;
+  int lambdap = 0;
+  int n1 = 0;
+  int n2 = 0;
+  int l1 = 0;
+  int l2 = 0;
+  int lambda = 0;
+  int s = 0;
+  int t = 1;
+  
+  gsl_interp_accel *acc = gsl_interp_accel_alloc();
+  gsl_spline *f_spline_RE = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double delta_r = (RMAX - RMIN)/(1.0*NSPLINE);
+  double *f_array_RE = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *r_array = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  for (int i = 0; i <= NSPLINE; i++) {
+    double r = RMIN + i*delta_r;
+    r_array[i] = r;
+    f_array_RE[i] = 1.0;
+    f_array_IM[i] = 1.0;
+  }
+
+  gsl_spline_init(f_spline_RE, r_array, f_array_RE, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM, r_array, f_array_IM, NSPLINE + 1);
+
+  double rm_RE, rm_IM;
+
+  compute_radial_matrix_element_GTJ(n1p, l1p, n2p, l2p, lambdap, n1, l1, n2, l2, lambda, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
+  printf("%g, %g\n", 2*M_PI*rm_RE, 2*M_PI*rm_IM); 
+  compute_radial_matrix_element_GTJ(1, l1p, n2p, l2p, lambdap, 1, l1, n2, l2, lambda, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
+  printf("%g, %g\n", 4*M_PI*rm_RE, 4*M_PI*rm_IM);
+  compute_radial_matrix_element_GTJ(1, 1, n2p, l2p, 1, 1, 1, n2, l2, 1, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
+  printf("%g, %g\n", 4*M_PI*rm_RE, 4*M_PI*rm_IM); 
+  compute_radial_matrix_element_GTJ(5, 3, 2, 2, 1, 5, 3, 2, 2, 1, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
+  printf("%g, %g\n", 4*M_PI*rm_RE, 4*M_PI*rm_IM); 
+
+  return error;
+}

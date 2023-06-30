@@ -219,7 +219,7 @@ void compute_radial_matrix_element_GTJ(int n1p, int l1p, int n2p, int l2p, int l
   int maxp = 2*n1p + 2*n2p + l1p + l2p;
 
   // Operator is angular momentum scalar
-  if (lambda != lambdap) {return 0.0;}
+  if (lambda != lambdap) {return;}
 
   // Transform to relative and CoM coordinates using Brody-Moshinsky transformation
   // Our conventions follow Moshinsky Nucl. Phys. 13 (1959) 104

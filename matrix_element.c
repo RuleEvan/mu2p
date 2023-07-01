@@ -1195,8 +1195,46 @@ int test_suite() {
   printf("%g, %g\n", 4*M_PI*rm_RE, 4*M_PI*rm_IM);
   compute_radial_matrix_element_GTJ(1, 1, n2p, l2p, 1, 1, 1, n2, l2, 1, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
   printf("%g, %g\n", 4*M_PI*rm_RE, 4*M_PI*rm_IM); 
-  compute_radial_matrix_element_GTJ(5, 3, 2, 2, 1, 5, 3, 2, 2, 1, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
+  compute_radial_matrix_element_GTJ(2, 1, 1, 1, 2, 1, 1, 2, 1, 2, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
   printf("%g, %g\n", 4*M_PI*rm_RE, 4*M_PI*rm_IM); 
+  compute_radial_matrix_element_GTJ(2, 1, 1, 1, 2, 2, 1, 2, 1, 2, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
+  printf("%g, %g\n", 4*M_PI*rm_RE, 4*M_PI*rm_IM); 
+  compute_radial_matrix_element_GTJ(1, 1, 1, 1, 2, 2, 1, 2, 1, 2, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
+  printf("%g, %g\n", 4*M_PI*rm_RE, 4*M_PI*rm_IM); 
+
+  double mat_RE_tot = 0;
+  double mat_IM_tot = 0;
+  double mat_RE, mat_IM;
+
+  FILE *in_file;
+  in_file = fopen("density_files/ge76_se76_J0_T2.dens", "r");
+  int in1, in2, ij1, ij2, ij12, it12;
+  int in1p, in2p, ij1p, ij2p, ij12p, it12p;
+  float density;
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      compute_matrix_element_GTJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, 0, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
+      mat_RE = 4.0*M_PI*m4_RE;
+      mat_IM = 4.0*M_PI*m4_IM;
+
+      mat_RE_tot += mat_RE*density;
+      mat_IM_tot += mat_IM*density;
+
+      double mt0 = compute_matrix_element_GT0(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12);
+      if (fabs(mt0 - mat_RE) > tol) {printf("GT Error\n"); exit(0);}
+      printf("%g %g %g\n", mat_RE, mat_IM, mt0);
+  }
+
+  printf("Re: %g\n", mat_RE_tot);
+
+  gsl_spline_free(f_spline_RE);
+  gsl_spline_free(f_spline_IM);
+  gsl_interp_accel_free(acc);  
+
 
   return error;
 }

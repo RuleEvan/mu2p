@@ -16,7 +16,7 @@
 // Isotope setup
 #define A_NUC 76 // Atomic Mass
 #define A_FACTOR 9.155 // [MeV] Average nuclear excitation energy
-#define B_OSC 1.84
+#define B_OSC 2.07
 #define Z_ATOM 32 // Atomic Number
 #define RNUC 3.6
 
@@ -24,7 +24,7 @@
 #define COR_FAC 0
 #define RMIN 0.00001
 #define RMAX 10.1
-#define NSPLINE 10000
+#define NSPLINE 20000
 
 // Physical constants
 #define ALPHA_FS 0.007297352664

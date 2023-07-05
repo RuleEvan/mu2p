@@ -153,7 +153,7 @@ double compute_radial_matrix_element_y2(int iv, int n1p, int l1p, int n2p, int l
   return mat;
 }
 
-/*
+
 void compute_radial_matrix_element_GTJFull(int n1p, int l1p, int n2p, int l2p, int lambdap, int n1, int l1, int n2, int l2, int lambda, int s, int t, int mu_rel, int mu_cm, int J, double q, gsl_spline *f_spline_RE, gsl_spline *f_spline_IM, gsl_interp_accel *acc, double *rm_RE, double *rm_IM) {
   // Computes the matrix element
   // <n1p l1p n2p l2p lambdap || Y_2 V(r) ||n1 l1 n2 l2 lambda>
@@ -162,7 +162,7 @@ void compute_radial_matrix_element_GTJFull(int n1p, int l1p, int n2p, int l2p, i
   int maxp = 2*n1p + 2*n2p + l1p + l2p;
   double mat_RE = 0.0;
   double mat_IM = 0.0;
-  if (lambda != lambdap) {return 0.0;}
+  
   for (int l_cm = 0; l_cm <= max; l_cm++) {
     for (int l_rel = 0; l_rel <= max - l_cm; l_rel ++) {
       if (pow(-1.0, l_rel + l_cm) != pow(-1.0, l1 + l2)) {continue;}
@@ -180,7 +180,7 @@ void compute_radial_matrix_element_GTJFull(int n1p, int l1p, int n2p, int l2p, i
  
  	    double rm = brody_mosh(n_rel, l_rel, n_cm, l_cm, lambda, n1, l1, n2, l2);
             rm *= brody_mosh(n_relp, l_relp, n_cmp, l_cmp, lambdap, n1p, l1p, n2p, l2p);
-            rm *= 1.0/(4.0*M_PI)*pow(-1.0, l_rel + l_relp + lambda)*(2.0*J + 1.0)*sqrt((2.0*l_rel + 1.0)*(2.0*l_relp + 1.0)*(2.0*l_cm + 1.0)*(2.0*l_cmp + 1.0))*three_j(l_relp, mu_rel, l_rel, 0.0, 0.0, 0.0)*three_j(l_cmp, mu_cm, l_cm, 0.0, 0.0, 0.0)*nine_j(l_relp, l_rel, mu_rel, l_cmp, l_cm, mu_cm, lambda_p, lambda, J);
+            rm *= 1.0/(4.0*M_PI)*pow(-1.0, l_relp + l_cmp)*sqrt(2.0*J + 1.0)*sqrt(2.0*lambdap + 1.0)*sqrt(2.0*lambda + 1.0)*sqrt((2.0*l_rel + 1.0)*(2.0*l_relp + 1.0)*(2.0*l_cm + 1.0)*(2.0*l_cmp + 1.0)*(2.0*mu_rel + 1.0)*(2.0*mu_cm + 1.0))*three_j(l_relp, mu_rel, l_rel, 0.0, 0.0, 0.0)*three_j(l_cmp, mu_cm, l_cm, 0.0, 0.0, 0.0)*nine_j(l_relp, l_rel, mu_rel, l_cmp, l_cm, mu_cm, lambdap, lambda, J);
             if (rm == 0.0) {continue;}
             rm *= sym;
             double mrel_RE = compute_rel_potential_spline(n_relp, l_relp, n_rel, l_rel, f_spline_RE, acc);
@@ -202,7 +202,7 @@ void compute_radial_matrix_element_GTJFull(int n1p, int l1p, int n2p, int l2p, i
   *rm_IM = mat_IM;
 
   return;
-}*/
+}
 
 void compute_radial_matrix_element_GTJ(int n1p, int l1p, int n2p, int l2p, int lambdap, int n1, int l1, int n2, int l2, int lambda, int s, int t, int J, double q, gsl_spline *f_spline_RE, gsl_spline *f_spline_IM, gsl_interp_accel *acc, double *rm_RE, double *rm_IM) {
   // Computes the matrix element

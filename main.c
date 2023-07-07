@@ -2,7 +2,9 @@
 
 int main(int argc, char *argv[]) {
 
-//  filter_spectrum("mg27_usdb_full_clean.res", 0.5, 1.5);
+//  printf("%g\n", compute_total_matrix_element_F0("../SPEED-DMG/DMG/examples/output/na19_f19_usdb_J0_T2_0_16.dens"));
+//  exit(0); 
+//  filter_spectrum("ne19_usdb_clean.res", 0.5, 1.5);
 //  exit(0);
   test_suite();
   exit(0);

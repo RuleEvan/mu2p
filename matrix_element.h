@@ -38,6 +38,7 @@ double compute_matrix_element_F1_double(int ina, int ija, int inb, int ijb, int 
 
 void compute_matrix_element_FJFull(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int in1, int ij1, int in2, int ij2, int ij12, int it12, double q, int l, int L, int J, gsl_spline *f_spline_RE, gsl_spline *f_spline_IM, gsl_interp_accel *acc, double *m_RE, double *m_IM);
 void compute_matrix_element_GTJFull(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int in1, int ij1, int in2, int ij2, int ij12, int it12, double q, int l, int L, int J, gsl_spline *f_spline_RE, gsl_spline *f_spline_IM, gsl_interp_accel *acc, double *m_RE, double *m_IM);
+void compute_matrix_element_T2JFull(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int in1, int ij1, int in2, int ij2, int ij12, int it12, double q, int mu_rel, int mu_cm, int L, int J, gsl_spline *f_spline_RE, gsl_spline *f_spline_IM, gsl_interp_accel *acc, double *m_RE, double *m_IM);
 
 
 double compute_total_matrix_element_F1_double(char* density_file_i, char* density_file_f, double qt, double kt);

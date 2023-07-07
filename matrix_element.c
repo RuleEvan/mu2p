@@ -248,9 +248,9 @@ void filter_spectrum(char* density_file, double J, double T) {
     if (MIN(fabs(j_tot - 0.5 - floor(j_tot - 0.5)), fabs(j_tot - 0.5 - ceil(j_tot - 0.5))) > 0.01) {continue;}
     if (MIN(fabs(t_tot - 0.5 - floor(t_tot - 0.5)), fabs(t_tot - 0.5 - ceil(t_tot - 0.5))) > 0.01) {continue;}
 
-        if (t_tot == T) {printf("%d, %d\n", i_state - 1, 0);}
+//        if (t_tot != 100) {printf("%d, %d\n", i_state - 1, 1);}
 
-//    if (t_tot == T) {printf("%d, %g\n", i_state - 1, excitation);}
+    if (t_tot != 100) {printf("%d, %d, %g\n", i_state - 1, (int) (2*t_tot), excitation);}
   }
 
   return;
@@ -374,7 +374,6 @@ double compute_matrix_element_F1(int ina, int ija, int inb, int ijb, int L, doub
    
   la = get_l(ina, ija);
   lb = get_l(inb, ijb);
-    
   // The N's listed in the input file are energy quanta, we want radial quantum numbers
   double na = (ina - la)/2.0;
   double nb = (inb - lb)/2.0;
@@ -430,14 +429,15 @@ double compute_total_matrix_element_F1_double(char* density_file_i, char* densit
     } else {toRead = 0;}
 
     int iNa, iNb, ija, ijb;
-    float density;
+    double density;
   
     double mat = 0;
   
     for (int i = 0; i < toRead; i++) {
-      fscanf(in_file, "        %d      %d       %d        %d       %f\n", &iNa, &ija, &iNb, &ijb, &density);
+      fscanf(in_file, "        %d      %d       %d        %d       %lf\n", &iNa, &ija, &iNb, &ijb, &density);
     //  printf("%d %d %d %d %g\n", iNa, ija, iNb, ijb, density);
-      mat += density*compute_matrix_element_F1(iNa, ija, iNb, ijb, Jop, qt); 
+      double matb = compute_matrix_element_F1(iNa, ija, iNb, ijb, Jop, qt);
+      mat += matb*density;
     }
     int junk;
     fscanf(in_file, "       %d\n", &junk);
@@ -475,12 +475,12 @@ double compute_total_matrix_element_F1_double(char* density_file_i, char* densit
     } else {toRead = 0;}
 
     int iNa, iNb, ija, ijb;
-    float density;
+    double density;
   
     double mat = 0;
   
     for (int i = 0; i < toRead; i++) {
-      fscanf(in_file, "        %d      %d       %d        %d       %f\n", &iNa, &ija, &iNb, &ijb, &density);
+      fscanf(in_file, "        %d      %d       %d        %d       %lf\n", &iNa, &ija, &iNb, &ijb, &density);
     //  printf("%d %d %d %d %g\n", iNa, ija, iNb, ijb, density);
       for (int L2 = L2Min; L2 <= L2Max; L2++) {
         for (int L1 = abs(L2 - Jop); L1 <= L2 + Jop; L1++) {
@@ -1104,6 +1104,74 @@ return;
 }
 
 
+void compute_matrix_element_T2JFull(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int in1, int ij1, int in2, int ij2, int ij12, int it12, double q, int mu_rel, int mu_cm, int L, int J, gsl_spline *f_spline_RE, gsl_spline *f_spline_IM, gsl_interp_accel *acc, double *m_RE, double *m_IM) {
+
+  double j1 = ij1/2.0;
+  double j2 = ij2/2.0;
+  double j12 = ij12/2.0;
+  double t12 = it12/2.0;
+  double j1p = ij1p/2.0;
+  double j2p = ij2p/2.0;
+  double j12p = ij12p/2.0;
+
+  int l1, l2, l1p, l2p;
+   
+  l1p = get_l(in1p, ij1p);
+  l2p = get_l(in2p, ij2p);
+  l1 = get_l(in1, ij1);
+  l2 = get_l(in2, ij2); 
+    
+  // The N's listed in the input file are energy quanta, we want radial quantum numbers
+  double n1 = (in1 - l1)/2.0;
+  double n2 = (in2 - l2)/2.0;
+  double n1p = (in1p - l1p)/2.0;
+  double n2p = (in2p - l2p)/2.0;
+  double m4_RE = 0.0;
+  double m4_IM = 0.0;
+  // Lambda = Lambdap and S = SP
+  for (int lambda = abs(l1 - l2); lambda <= (l1 + l2); lambda++) {
+    for (int lambdap = abs(l1p - l2p); lambdap <= l1p + l2p; lambdap++) { 
+      int s_max = MIN(lambda + j12, 1);
+      s_max = MIN(s_max, lambdap + j12p);
+      int s_min = abs(lambda - j12);
+      s_min = MAX(s_min, abs(lambdap - j12p));
+      for (int s = s_min; s <= s_max; s++) {
+	if (s != 1) {continue;}
+        // JJ -> LS coupling factors
+        double fact = sqrt((2*lambda + 1)*(2*s + 1)*(2*j1 + 1)*(2*j2 + 1));
+        fact *= sqrt((2*lambdap + 1)*(2*s + 1)*(2*j1p + 1)*(2*j2p + 1));
+        fact *= nine_j(l1, l2, lambda, 0.5, 0.5, s, j1, j2, j12);
+        fact *= nine_j(l1p, l2p, lambdap, 0.5, 0.5, s, j1p, j2p, j12p);
+        if (fact == 0.0) {continue;}
+        double m1 = sqrt(2.0*j12 + 1)*sqrt(2.0*j12p + 1)*sqrt(2.0*J + 1)*nine_j(lambdap, lambda, L, s, s, 2, j12p, j12, J);
+	m1 *= 2.0*sqrt(5);
+
+        // Reduced matrix element of tau(1)_- tau(2)_-
+        m1 *= sqrt(5);
+
+
+        m1 *= fact;
+        double rm_RE = 0.0;
+        double rm_IM = 0.0;
+        compute_radial_matrix_element_GTJFull(n1p, l1p, n2p, l2p, lambdap, n1, l1, n2, l2, lambda, s, t12, mu_rel, mu_cm, L, q, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
+        m4_RE += m1*rm_RE;
+        m4_IM += m1*rm_IM;
+      }
+    }
+  }
+
+  if ((n1 == n2) && (j1 == j2) && (l1 == l2)) {m4_RE *= 1.0/sqrt(2.0); m4_IM *= 1.0/sqrt(2.0);}
+  if ((n1p == n2p) && (j1p == j2p) && (l1p == l2p)) {m4_RE *= 1.0/sqrt(2.0); m4_IM *= 1.0/sqrt(2.0);}
+
+  *m_RE = m4_RE;
+  *m_IM = m4_IM;
+ 
+//  printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%g\n", in1p, ij1p, in2p, ij2p, ij12p, it12, in1, ij1, in2, ij2, ij12, it12, *m_RE);
+
+  return;
+}
+
+
 void compute_matrix_element_GTJFull(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int in1, int ij1, int in2, int ij2, int ij12, int it12, double q, int l, int L, int J, gsl_spline *f_spline_RE, gsl_spline *f_spline_IM, gsl_interp_accel *acc, double *m_RE, double *m_IM) {
 
   double j1 = ij1/2.0;
@@ -1142,7 +1210,7 @@ void compute_matrix_element_GTJFull(int in1p, int ij1p, int in2p, int ij2p, int 
         fact *= nine_j(l1, l2, lambda, 0.5, 0.5, s, j1, j2, j12);
         fact *= nine_j(l1p, l2p, lambdap, 0.5, 0.5, s, j1p, j2p, j12p);
         if (fact == 0.0) {continue;}
-        double m1 = pow(-1, lambdap + s + j12 + J)*sqrt(2.0*j12 + 1)*sqrt(2.0*j12p + 1)*six_j(lambda, lambdap, J, j12p, j12, s)/sqrt(2*s+1);
+        double m1 = pow(-1, lambdap + s + j12 + J)*sqrt(2.0*j12 + 1)*sqrt(2.0*j12p + 1)*six_j(lambda, lambdap, J, j12p, j12, s);
 	m1 *= pow(-1.0, 1.0 + s)*six_j(s,0.5,0.5,1.0,0.5,0.5)*6.0;
 
         // Reduced matrix element of tau(1)_- tau(2)_-
@@ -1335,6 +1403,11 @@ int test_suite() {
   compute_radial_matrix_element_GTJ(1, 1, 1, 1, 2, 2, 1, 2, 1, 2, s, t, 0, 0, f_spline_RE, f_spline_IM, acc, &rm_RE, &rm_IM);
   printf("%g, %g\n", 4*M_PI*rm_RE, 4*M_PI*rm_IM); 
 
+  printf("\n");
+  printf("Ge76 Test Results:\n");
+  printf("\n");
+  printf("    Result  |   Reference\n");
+  printf("-------------------------\n");
 
 
   double mat_RE_tot = 0;
@@ -1345,8 +1418,8 @@ int test_suite() {
   in_file = fopen("density_files/ge76_se76_J0_T2.dens", "r");
   int in1, in2, ij1, ij2, ij12, it12;
   int in1p, in2p, ij1p, ij2p, ij12p, it12p;
-  float density;
-
+  double density;
+/*
   while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
@@ -1365,8 +1438,8 @@ int test_suite() {
   }
 
   fclose(in_file);
-  printf("Ge76 Test Results...\n");
-  printf("MGT: %g\n", mat_RE_tot);
+
+  printf("MGT: %+.3f | %+.3f\n", fabs(mat_RE_tot), 1.278);
 
   for (int i = 0; i <= NSPLINE; i++) {
     double r = RMIN + i*delta_r;
@@ -1384,7 +1457,7 @@ int test_suite() {
   
   mat_RE_tot = 0;
   mat_IM_tot = 0;
-/*
+
   while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
@@ -1401,7 +1474,7 @@ int test_suite() {
   }
 
   fclose(in_file);
-  printf("M1: %g\n", mat_RE_tot);
+  printf("M1 : %+.3f | %+.3f\n", mat_RE_tot, 0.129);
 
   in_file = fopen("density_files/ge76_se76_J0_T2.dens", "r");
   
@@ -1424,7 +1497,7 @@ int test_suite() {
   }
 
   fclose(in_file);
-  printf("M2: %g\n", mat_RE_tot);
+  printf("M2 : %+.3f | %+.3f\n", mat_RE_tot, -0.411);
 
 
   for (int i = 0; i <= NSPLINE; i++) {
@@ -1460,7 +1533,7 @@ int test_suite() {
   }
 
   fclose(in_file);
-  printf("M1': %g\n", mat_RE_tot);
+  printf("M1': %+.3f | %+.3f\n", mat_RE_tot, 0.149);
 
   in_file = fopen("density_files/ge76_se76_J0_T2.dens", "r");
   
@@ -1483,15 +1556,103 @@ int test_suite() {
   }
 
   fclose(in_file);
-  printf("M2': %g\n", mat_RE_tot);
+  printf("M2': %.3f | %.3f\n", mat_RE_tot, -0.469);
 
-*/
-  printf("Begin finite-q testing...\n");
-  in_file = fopen("density_files/al27_na27_bw84_J0_T2_0_0.dens", "r");
-
-  double qt = 105.0;
+  in_file = fopen("density_files/ge76_se76_J0_T2.dens", "r");
+  double mGT2p = mat_RE_tot; 
+  mat_RE_tot = 0;
+  mat_IM_tot = 0;
 
   while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      compute_matrix_element_T2JFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, 0, 2, 0, 2, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
+      mat_RE = 4.0*M_PI*m4_RE;
+      mat_IM = 4.0*M_PI*m4_IM;
+
+      mat_RE_tot += mat_RE*density;
+      mat_IM_tot += mat_IM*density;
+
+//      printf("%g %g %g\n", mat_RE, mat_IM);
+  }
+
+  fclose(in_file);
+  printf("M3': %.3f | %.3f\n", 1.0/3.0*(mGT2p) + sqrt(8.0*M_PI/15.0)*sqrt(5.0)/(2.0*sqrt(M_PI))*mat_RE_tot, -0.151);
+*/
+//  printf("\n");
+//  printf("Begin Mu2p Calculations:\n");
+//  printf("\n");
+//  printf("Computing Al27(gs) -> Na27(gs):\n");
+//  in_file = fopen("density_files/al27_na27_usdb_J0_T2_0_0.dens", "r");
+  in_file = fopen("density_files/na19_f19_usdb_J0_T2_0_16.dens", "r");
+
+//  printf("    Light neutrino exchange: \n");
+//  printf("-----------------------------\n");
+
+  mat_RE_tot = 0.0;
+  mat_IM_tot = 0.0;
+
+  char density_file_i[250];
+  char density_file_f[250];
+  int i_state, i_zero;
+  float excite;
+
+  double Mi = 26981.5;
+  double Mn = 26984.3;
+
+  double Ebind = 0.463;
+
+  double total_mat = 0;
+
+  double E_avg = 10.0;
+  
+  double ti = 1.5;
+  double tf = 1.5;
+  double ji = 2.5;
+  double jf = 2.5;
+  double mti = 1.5;
+  double mtf = -0.5;
+ 
+  double pe_max = 390.5;
+  double tn = 1.5;
+  double mtn = 0.5;
+  double qt = 0.0;
+  //pe_max = 0.0;
+  qt = pe_max;
+  double alpha = M_MUON - E_avg + Mi - Mn;
+  double delta_e = pe_max + E_avg - Mi + Mn;
+
+  gsl_spline *f_spline_RE2 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM2 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE2 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM2 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  gsl_spline *f_spline_RE4 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM4 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE4 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM4 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+
+  for (int i = 0; i <= NSPLINE; i++) {
+    double r = RMIN + i*delta_r;
+    r_array[i] = r;
+    f_array_RE[i] = v_light_nu_RE(0, pe_max, alpha, delta_e, r);
+    f_array_IM[i] = v_light_nu_IM(0, pe_max, alpha, r);
+    f_array_RE2[i] = v_light_nu_RE(2, pe_max, alpha, delta_e, r);
+    f_array_IM2[i] = v_light_nu_IM(2, pe_max, alpha, r);
+    f_array_RE4[i] = v_light_nu_RE(4, pe_max, alpha, delta_e, r);
+    f_array_IM4[i] = v_light_nu_IM(4, pe_max, alpha, r);
+  }
+
+  gsl_spline_init(f_spline_RE, r_array, f_array_RE, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM, r_array, f_array_IM, NSPLINE + 1);
+  gsl_spline_init(f_spline_RE2, r_array, f_array_RE2, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM2, r_array, f_array_IM2, NSPLINE + 1);
+  gsl_spline_init(f_spline_RE4, r_array, f_array_RE4, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM4, r_array, f_array_IM4, NSPLINE + 1);
+
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
       double m4_RE = 0.0;
@@ -1502,47 +1663,163 @@ int test_suite() {
       compute_matrix_element_FJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
       mat_RE = 4.0*M_PI*m4_RE;
       mat_IM = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE*density;
+      mat_IM_tot += mat_IM*density;
 
       compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, 0, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
       mat_RE2 = 4.0*M_PI*m4_RE;
       mat_IM2 = 4.0*M_PI*m4_IM;
 
       //printf("%g, %g\n", mat_RE, mat_RE2);
-      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Fermi operator: %g, %g\n", mat_RE, mat_RE2); exit(0);}
-      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Fermi operator: %g, %g\n", mat_IM, mat_IM2); exit(0);}
+      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Fermi operator J = 0: %g, %g\n", mat_RE, mat_RE2); exit(0);}
+      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Fermi operator J = 0: %g, %g\n", mat_IM, mat_IM2); exit(0);}
 
-      compute_matrix_element_FJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
+      compute_matrix_element_FJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
       mat_RE = 4.0*M_PI*m4_RE;
       mat_IM = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE*density;
+      mat_IM_tot += mat_IM*density*sqrt(5.0);
 
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 2, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 2, 0, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
       mat_RE2 = 4.0*M_PI*m4_RE;
       mat_IM2 = 4.0*M_PI*m4_IM;
 
 //      printf("%g, %g\n", mat_RE, mat_RE2);
-      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Fermi operator: %g, %g\n", mat_RE, mat_RE2); exit(0);}
-      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Fermi operator: %g, %g\n", mat_IM, mat_IM2); exit(0);}
+      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Fermi operator J = 2: %g, %g\n", mat_RE, mat_RE2); exit(0);}
+      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Fermi operator J = 2: %g, %g\n", mat_IM, mat_IM2); exit(0);}
 
-      compute_matrix_element_FJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
+      compute_matrix_element_FJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
       mat_RE = 4.0*M_PI*m4_RE;
       mat_IM = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE*density;
+      mat_IM_tot += mat_IM*density*sqrt(9.0);
 
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 4, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 4, 0, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
       mat_RE2 = 4.0*M_PI*m4_RE;
       mat_IM2 = 4.0*M_PI*m4_IM;
 
-      //printf("%g, %g\n", mat_RE, mat_RE2);
-      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Fermi operator: %g, %g\n", mat_RE, mat_RE2); exit(0);}
-      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Fermi operator: %g, %g\n", mat_IM, mat_IM2); exit(0);}
+//      printf("%g, %g\n", mat_RE, mat_RE2);
+      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Fermi operator J = 4: %g, %g\n", mat_RE, mat_RE2); exit(0);}
+      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Fermi operator J = 4: %g, %g\n", mat_IM, mat_IM2); exit(0);}
+
+  }
+  fclose(in_file);
+  mat_IM_tot *= pow(-1, 2 + tf - ti)*clebsch_gordan(2, ti, tf, -2, mti, mtf)/sqrt(2.0*tf + 1)/sqrt(2.0*jf + 1);
+  printf("Fermi Checks Passed: J = 0 and generic J methods agree.\n");
+  printf("MF: %.20f\n", mat_IM_tot);
+  in_file = fopen("density_files/na19_f19_usdb_J2_T2_0_16.dens", "r");
+
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 0, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(-sqrt(5.0))*(-sqrt(2.0/21.0)/5.0);
+      mat_IM_tot += mat_IM2*density*(-sqrt(5.0))*(-sqrt(2.0/21.0)/5.0);
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, 2, 2, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(-sqrt(5.0))*(-sqrt(2.0/21.0)/5.0);
+      mat_IM_tot += mat_IM2*density*(-sqrt(5.0))*(-sqrt(2.0/21.0)/5.0);
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 2, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(-5.0*sqrt(2.0/7.0))*(-sqrt(2.0/21.0)/5.0);
+      mat_IM_tot += mat_IM2*density*(-5.0*sqrt(2.0/7.0))*(-sqrt(2.0/21.0)/5.0);
+
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 4, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(-3.0*sqrt(10.0/7.0))*(-sqrt(2.0/21.0)/5.0);
+      mat_IM_tot += mat_IM2*density*(-3.0*sqrt(10.0/7.0))*(-sqrt(2.0/21.0)/5.0);
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 2, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(-3.0*sqrt(10.0/7.0))*(-sqrt(2.0/21.0)/5.0);
+      mat_IM_tot += mat_IM2*density*(-3.0*sqrt(10.0/7.0))*(-sqrt(2.0/21.0)/5.0);
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 4, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(-30.0/sqrt(77.0))*(-sqrt(2.0/21.0)/5.0);
+      mat_IM_tot += mat_IM2*density*(-30.0/sqrt(77.0))*(-sqrt(2.0/21.0)/5.0);
+
 
   }
   fclose(in_file);
 
-  printf("Fermi Checks Passed.\n");
+  printf("J = 2 MF: %.20f\n", mat_IM_tot);
+
+  in_file = fopen("density_files/na19_f19_usdb_J4_T2_0_16.dens", "r");
+
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 0, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(3.0)*(sqrt(1.0/70.0)/3.0);
+      mat_IM_tot += mat_IM2*density*(3.0)*(sqrt(1.0/70.0)/3.0);
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, 4, 4, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(3.0)*(sqrt(1.0/70.0)/3.0);
+      mat_IM_tot += mat_IM2*density*(3.0)*(sqrt(1.0/70.0)/3.0);
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 2, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(3.0*sqrt(10.0/7.0))*(sqrt(1.0/70.0)/3.0);
+      mat_IM_tot += mat_IM2*density*(3.0*sqrt(10.0/7.0))*(sqrt(1.0/70.0)/3.0);
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 4, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(30.0/sqrt(77.0))*(sqrt(1.0/70.0)/3.0);
+      mat_IM_tot += mat_IM2*density*(30.0/sqrt(77.0))*(sqrt(1.0/70.0)/3.0);
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 2, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(30.0/sqrt(77.0))*(sqrt(1.0/70.0)/3.0);
+      mat_IM_tot += mat_IM2*density*(30.0/sqrt(77.0))*(sqrt(1.0/70.0)/3.0);
+
+      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 4, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+      mat_RE2 = 4.0*M_PI*m4_RE;
+      mat_IM2 = 4.0*M_PI*m4_IM;
+      mat_RE_tot += mat_RE2*density*(81.0*sqrt(2.0/1001.0))*(sqrt(1.0/70.0)/3.0);
+      mat_IM_tot += mat_IM2*density*(81.0*sqrt(2.0/1001.0))*(sqrt(1.0/70.0)/3.0);
+
+  }
+  fclose(in_file);
+
+  printf("J = 4 MF: %.20f\n", mat_IM_tot);
+
+
 
   in_file = fopen("density_files/al27_na27_bw84_J0_T2_0_0.dens", "r");
 
-  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
       double m4_RE = 0.0;
@@ -1558,7 +1835,7 @@ int test_suite() {
       mat_RE2 = 4.0*M_PI*m4_RE;
       mat_IM2 = 4.0*M_PI*m4_IM;
 
-      printf("%g, %g\n", mat_RE, mat_RE2);
+//      printf("%g, %g\n", mat_RE, mat_RE2);
       if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Gamow-Teller operator J = 0: %g, %g\n", mat_RE, mat_RE2); exit(0);}
       if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Gamow-Teller operator J = 0: %g, %g\n", mat_IM, mat_IM2); exit(0);}
 
@@ -1570,7 +1847,7 @@ int test_suite() {
       mat_RE2 = 4.0*M_PI*m4_RE;
       mat_IM2 = 4.0*M_PI*m4_IM;
 
-      printf("%g, %g\n", mat_RE, mat_RE2);
+//      printf("%g, %g\n", mat_RE, mat_RE2);
       if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Gamow-Teller operator J = 2: %g, %g\n", mat_RE, mat_RE2); exit(0);}
       if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Gamow-Teller operator J = 2: %g, %g\n", mat_IM, mat_IM2); exit(0);}
 
@@ -1588,6 +1865,36 @@ int test_suite() {
 
   }
 
+  printf("Gamow-Teller Check Passed: J = 0 and generic J methods agree.\n");
+
+  printf("Begin Closure Check...\n");
+  FILE *list_file;
+  list_file = fopen("list_files/na19_f19.list", "r");
+
+  int itn;
+  double Imat_tot = 0.0;
+  while(fscanf(list_file, "%d, %d, %f\n", &i_state, &itn, &excite) == 3) {
+   if (i_state > 10000) {continue;}
+//    sprintf(density_file_i, "../SPEED-DMG/DMG/examples/output/al27_mg27_usdb_0_%d.dens", i_state);
+//    sprintf(density_file_f, "../SPEED-DMG/DMG/examples/output/mg27_na27_usdb_%d_0.dens", i_state);
+    sprintf(density_file_i, "../SPEED-DMG/DMG/examples/output/na19_ne19_usdb_0_%d.dens", i_state);
+    sprintf(density_file_f, "../SPEED-DMG/DMG/examples/output/ne19_f19_usdb_%d_16.dens", i_state);
+    tn = itn/2.0;
+    double kt = pe_max;
+//    kt = 0.0;
+    excite = E_avg; 
+    double qt = M_MUON - excite + Mi - Mn;
+    
+    double IFact_i = pow(-1, 1 - ti + tn)*clebsch_gordan(1, ti, tn, -1, mti, mtn)/sqrt(2.0*tn + 1);
+    double IFact_f = pow(-1, 1 - tn + tf)*clebsch_gordan(1, tn, tf, -1, mtn, mtf)/sqrt(2.0*tf + 1);
+    double mat = compute_total_matrix_element_F1_double(density_file_i, density_file_f, qt, kt)*IFact_i*IFact_f*qt*RNUC/HBARC/(4*M_PI*M_PI)*(-M_PI);
+    double Imat = compute_total_matrix_element_F1_double(density_file_i, density_file_f, 0.0, 0.0)*IFact_i*IFact_f;
+//    Imat_tot += Imat;
+    total_mat += mat;
+
+//    printf("%d %g %g %g\n", i_state, excite, mat, total_mat);
+  }
+  printf("Total: %.20f %.20f\n", total_mat, Imat_tot);
 
   gsl_spline_free(f_spline_RE);
   gsl_spline_free(f_spline_IM);

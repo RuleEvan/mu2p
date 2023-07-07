@@ -82,7 +82,7 @@ double talmi_rel_double(double p, int L1, double kt, int L2, double qt) {
   // Set the limits of the integral and the error tolerance
   double r_min = 0.0001;
   double r_max = 10.0;
-  double tol = pow(10, -6);
+  double tol = pow(10, -8);
   double I_p = Romberg7Vars(&talmi_integrand_double, r_min, r_max, p, L1, kt, L2, qt, tol);
   I_p *= 2.0/gsl_sf_gamma(p + 1.5);
   
@@ -95,7 +95,7 @@ double talmi_rel(double p, int iv, int J, double qt) {
   // Set the limits of the integral and the error tolerance
   double r_min = 0.0001;
   double r_max = 10.0;
-  double tol = pow(10, -6);
+  double tol = pow(10, -8);
   double I_p = Romberg5Vars(&talmi_integrand_rel, r_min, r_max, p, iv, J, qt, tol);
   I_p *= 2.0/gsl_sf_gamma(p + 1.5);
   

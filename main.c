@@ -2,11 +2,31 @@
 
 int main(int argc, char *argv[]) {
 
+//  filter_spectrum("na27_usdb_all.res", 2.5, 2.5);
+//exit(0);
+      	compute_mu2p_transitions();
+
+//  printf("%g\n", compute_total_matrix_element_GT0("mg26_mg26_usdb_2bdy_J0_T0_0_0.dens"));
+exit(0);
+
+	int n = 9;
+	int np = 10;
+	int l = 0;
+	int lp = 0;
+	int p = 0;
+
+printf("B: %g\n", b_coeff(n, l, np, lp, p));	
+//  generate_bigstick_int_file(4, 1);
+  exit(0);
+
+
 //  printf("%g\n", compute_total_matrix_element_F0("../SPEED-DMG/DMG/examples/output/na19_f19_usdb_J0_T2_0_16.dens"));
 //  exit(0); 
 //  filter_spectrum("ne19_usdb_clean.res", 0.5, 1.5);
 //  exit(0);
-  test_suite();
+//  test_suite();
+  compute_mu2p_transitions();
+//  perform_closure_analysis();
   exit(0);
   FILE *list_file;
   list_file = fopen("lists/al27_mg27_na27.list", "r");

@@ -248,9 +248,9 @@ void filter_spectrum(char* density_file, double J, double T) {
     if (MIN(fabs(j_tot - 0.5 - floor(j_tot - 0.5)), fabs(j_tot - 0.5 - ceil(j_tot - 0.5))) > 0.01) {continue;}
     if (MIN(fabs(t_tot - 0.5 - floor(t_tot - 0.5)), fabs(t_tot - 0.5 - ceil(t_tot - 0.5))) > 0.01) {continue;}
 
-//        if (t_tot != 100) {printf("%d, %d\n", i_state - 1, 1);}
-
-    if (t_tot != 100) {printf("%d, %d, %g\n", i_state - 1, (int) (2*t_tot), excitation);}
+//        if (j_tot == 2.5 && t_tot == 2.5) {printf("%d, %d\n", i_state - 1, 1);}
+    if (excitation > 25.0) {continue;}
+    if (j_tot == 2.5 && t_tot == 2.5) {printf("%d, %g\n", i_state - 1, excitation);}
   }
 
   return;
@@ -271,9 +271,9 @@ double compute_total_matrix_element_GT0(char* density_file) {
   while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
-      double m4 = compute_matrix_element_GT0(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12); 
+      double m4 = compute_matrix_element_GT0(in1p, ij1p, in2p, ij2p, ij12p, it12p, in1, ij1, in2, ij2, ij12, it12); 
     mat += m4*density;
-  //  printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%g\n", in1p, ij1p, in2p, ij2p, ij12p, it12p, in1, ij1, in2, ij2, ij12, it12, m4*density);
+    printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%g\n", in1p, ij1p, in2p, ij2p, ij12p, it12p, in1, ij1, in2, ij2, ij12, it12, m4*density);
 
   }
 
@@ -304,15 +304,17 @@ double compute_total_matrix_element_GT2(char* density_file) {
 }
 
 
-double compute_matrix_element_GT0(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int in1, int ij1, int in2, int ij2, int ij12, int it12) {
+double compute_matrix_element_GT0(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int it12p, int in1, int ij1, int in2, int ij2, int ij12, int it12) {
 
   double j1 = ij1/2.0;
   double j2 = ij2/2.0;
   double j12 = ij12/2.0;
-  double t12 = it12/2.0;
   double j1p = ij1p/2.0;
   double j2p = ij2p/2.0;
   double j12p = ij12p/2.0;
+
+  double t12 = it12/2.0;
+  double t12p = it12p/2.0;
 
   int l1, l2, l1p, l2p;
    
@@ -344,7 +346,10 @@ double compute_matrix_element_GT0(int in1p, int ij1p, int in2p, int ij2p, int ij
       // Un-reduced matrix element of sig(1) dot sig(2)
       double m1 = pow(-1.0, 1.0 + s)*six_j(s,0.5,0.5,1.0,0.5,0.5)*6.0;
       // Reduced matrix element of tau(1)_- tau(2)_-
-      m1 *= sqrt(5);
+      m1 *= sqrt(2.0*t12 + 1.0)*pow(-1.0, 1.0 + t12)*six_j(t12,0.5,0.5,1.0,0.5,0.5)*6.0;
+
+//      m1 *= sqrt(5);
+//      m1 *= 6.0*sqrt((2.0*t12 + 1)*(2.0*t12p + 1))*nine_j(0.5, 0.5, 1, 0.5,0.5, 1, t12p, t12, 1);
       double anti_symm = 0.0;
       if ((n1 == n1p) && (l1 == l1p) && (n2 == n2p) && (l2 == l2p)) {anti_symm = 1.0;}
       if ((n1 == n2p) && (l1 == l2p) && (n2 == n1p) && (l2 == l1p)) {anti_symm += pow(-1.0, t12 + l1 + l2 + lambda + s + 1);}
@@ -451,12 +456,14 @@ double compute_total_matrix_element_F1_double(char* density_file_i, char* densit
   double total_mat = 0.0;
 
   while (fscanf(in_file, "    %d   %d   %d   %d   %d   %d\n", &iJf, &iTf, &iJn, &iTn, &iJop, &iTop) == 6) {;
-    int L2Min = (int) fabs((iJf - iJn)/2.0);
-    int L2Max = (int) ((iJf + iJn)/2.0);
+    iJf = 5;
+    int L2Min = (int) fabs((iJi - iJn)/2.0);
+    int L2Max = (int) ((iJi + iJn)/2.0);
     int numL = L2Max - L2Min + 1;
     int Jop = iJop/2;
     double Jf = iJf/2.0;
-    double Ji = Jf;
+ //   double Ji = Jf;
+    double Ji = iJi/2.0;
     double Jn = iJn/2.0;
    // printf("Start: %d %d %d %d %d\n", iJf, iJn, L2Min, L2Max, Jop);
     int toRead;
@@ -692,7 +699,16 @@ double compute_matrix_element_F0(int in1p, int ij1p, int in2p, int ij2p, int ij1
 void generate_bigstick_int_file(int i_model, double q) {
 int num_shells;
 
-if (i_model == -2) {
+if (i_model == -5) {
+	printf("Selecting gcn2850 model space\n");
+	num_shells = 4;
+} else if (i_model == -4) {
+	printf("Selecting jj44b model space\n");
+	num_shells = 4;
+} else if (i_model == -3) {
+	printf("Selecting JUN45 model space\n");
+	num_shells = 4;
+} else if (i_model == -2) {
 	printf("Selecting Brown-Wildenthal model space\n");
 	num_shells = 3;
 } else if (i_model == -1) {
@@ -711,8 +727,8 @@ if (i_model == -2) {
 	printf("Selecting sd + core + extra model space\n");
 	num_shells = 7;
 } else if (i_model == 4) {
-	printf("Selecting kbp model space\n");
-	num_shells = 10;
+	printf("Selecting kb3g model space\n");
+	num_shells = 4;
 } else if (i_model == 5) {
 	printf("Selecting o16 4hw model space\n");
 	num_shells = 21;
@@ -725,7 +741,76 @@ int *l_shell = (int*) malloc(sizeof(int)*num_shells);
 int *w_shell = (int*) malloc(sizeof(int)*num_shells);
 int *i_core = (int*) malloc(sizeof(int)*num_shells);
 
-if (i_model == -2) {
+if (i_model == -5) {
+
+      n_shell[0] = 4;
+      j_shell[0] = 9;
+      l_shell[0] = 4;
+      i_core[0] = 0;
+
+      n_shell[1] = 3;
+      j_shell[1] = 5;
+      l_shell[1] = 3;
+      i_core[1] = 0;
+
+      n_shell[2] = 3;
+      j_shell[2] = 3;
+      l_shell[2] = 1;
+      i_core[2] = 0;
+
+      n_shell[3] = 3;
+      j_shell[3] = 1;
+      l_shell[3] = 1;
+      i_core[3] = 0;
+
+
+} else if (i_model == -4) {
+
+      n_shell[0] = 3;
+      j_shell[0] = 5;
+      l_shell[0] = 3;
+      i_core[0] = 0;
+
+      n_shell[1] = 3;
+      j_shell[1] = 3;
+      l_shell[1] = 1;
+      i_core[1] = 0;
+
+      n_shell[2] = 3;
+      j_shell[2] = 1;
+      l_shell[2] = 1;
+      i_core[2] = 0;
+
+      n_shell[3] = 4;
+      j_shell[3] = 9;
+      l_shell[3] = 4;
+      i_core[3] = 0;
+
+
+} else if (i_model == -3) {
+
+      n_shell[0] = 3;
+      j_shell[0] = 3;
+      l_shell[0] = 1;
+      i_core[0] = 0;
+
+      n_shell[1] = 3;
+      j_shell[1] = 5;
+      l_shell[1] = 3;
+      i_core[1] = 0;
+
+      n_shell[2] = 3;
+      j_shell[2] = 1;
+      l_shell[2] = 1;
+      i_core[2] = 0;
+
+      n_shell[3] = 4;
+      j_shell[3] = 9;
+      l_shell[3] = 4;
+      i_core[3] = 0;
+
+
+} else if (i_model == -2) {
       n_shell[0] = 2;
       j_shell[0] = 1;
       l_shell[0] = 0;
@@ -886,8 +971,8 @@ i_core[10] = 1;
 
   
 n_shell[0] = 3;
-j_shell[0] = 1;
-l_shell[0] = 1;
+j_shell[0] = 7;
+l_shell[0] = 3;
 i_core[0] = 0;
 
 n_shell[1] = 3;
@@ -901,39 +986,10 @@ l_shell[2] = 3;
 i_core[2] = 0;
 
 n_shell[3] = 3;
-j_shell[3] = 7;
-l_shell[3] = 3;
+j_shell[3] = 1;
+l_shell[3] = 1;
 i_core[3] = 0;
 
-n_shell[4] = 2;
-j_shell[4] = 3;
-l_shell[4] = 2;
-i_core[4] = 1;
-
-n_shell[5] = 2;
-j_shell[5] = 1;
-l_shell[5] = 0;
-i_core[5] = 1;
-
-n_shell[6] = 2;
-j_shell[6] = 5;
-l_shell[6] = 2;
- i_core[6] = 1;
-
-n_shell[7] = 1;
-j_shell[7] = 1;
-l_shell[7] = 1;
-i_core[7] = 1;
-
-n_shell[8] = 1;
-j_shell[8] = 3;
-l_shell[8] = 1;
-i_core[8] = 1;
-
-n_shell[9] = 0;
-j_shell[9] = 1;
-l_shell[9] = 0;
-i_core[9] = 1;
 
 } else if (i_model == 5) {
 
@@ -1048,7 +1104,7 @@ for (int i = 0; i < 21; i++) {
   }
 } 
 FILE* out_file;
-out_file = fopen("bw_J2.int", "w");
+out_file = fopen("kb3g_J2.int", "w");
 
 for (int ia = 0; ia < num_shells; ia++) {
   int n1p = n_shell[ia];
@@ -1419,8 +1475,8 @@ int test_suite() {
   int in1, in2, ij1, ij2, ij12, it12;
   int in1p, in2p, ij1p, ij2p, ij12p, it12p;
   double density;
-/*
-  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
       double m4_RE = 0.0;
@@ -1432,7 +1488,7 @@ int test_suite() {
       mat_RE_tot += mat_RE*density;
       mat_IM_tot += mat_IM*density;
 
-      double mt0 = compute_matrix_element_GT0(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12);
+      double mt0 = compute_matrix_element_GT0(in1p, ij1p, in2p, ij2p, ij12p, it12, in1, ij1, in2, ij2, ij12, it12);
       if (fabs(mt0 - mat_RE) > tol) {printf("GT Error\n"); exit(0);}
     //  printf("%g %g %g\n", mat_RE, mat_IM, mt0);
   }
@@ -1458,7 +1514,7 @@ int test_suite() {
   mat_RE_tot = 0;
   mat_IM_tot = 0;
 
-  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
       double m4_RE = 0.0;
@@ -1481,7 +1537,7 @@ int test_suite() {
   mat_RE_tot = 0;
   mat_IM_tot = 0;
 
-  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
       double m4_RE = 0.0;
@@ -1517,7 +1573,7 @@ int test_suite() {
   mat_RE_tot = 0;
   mat_IM_tot = 0;
 
-  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
       double m4_RE = 0.0;
@@ -1540,7 +1596,7 @@ int test_suite() {
   mat_RE_tot = 0;
   mat_IM_tot = 0;
 
-  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
       double m4_RE = 0.0;
@@ -1563,7 +1619,7 @@ int test_suite() {
   mat_RE_tot = 0;
   mat_IM_tot = 0;
 
-  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
       double m4_RE = 0.0;
@@ -1580,19 +1636,12 @@ int test_suite() {
 
   fclose(in_file);
   printf("M3': %.3f | %.3f\n", 1.0/3.0*(mGT2p) + sqrt(8.0*M_PI/15.0)*sqrt(5.0)/(2.0*sqrt(M_PI))*mat_RE_tot, -0.151);
-*/
-//  printf("\n");
-//  printf("Begin Mu2p Calculations:\n");
-//  printf("\n");
-//  printf("Computing Al27(gs) -> Na27(gs):\n");
-//  in_file = fopen("density_files/al27_na27_usdb_J0_T2_0_0.dens", "r");
-  in_file = fopen("density_files/na19_f19_usdb_J0_T2_0_16.dens", "r");
 
-//  printf("    Light neutrino exchange: \n");
-//  printf("-----------------------------\n");
+  return error;
 
-  mat_RE_tot = 0.0;
-  mat_IM_tot = 0.0;
+}
+
+void perform_closure_analysis() {
 
   char density_file_i[250];
   char density_file_f[250];
@@ -1608,22 +1657,30 @@ int test_suite() {
 
   double E_avg = 10.0;
   
-  double ti = 1.5;
-  double tf = 1.5;
+  double ti = 0.5;
+  double tf = 2.5;
   double ji = 2.5;
   double jf = 2.5;
-  double mti = 1.5;
-  double mtf = -0.5;
+  double mti = -0.5;
+  double mtf = -2.5;
  
-  double pe_max = 390.5;
+  double pe_max = 92.3;
   double tn = 1.5;
-  double mtn = 0.5;
+  double mtn = -1.5;
   double qt = 0.0;
   //pe_max = 0.0;
   qt = pe_max;
   double alpha = M_MUON - E_avg + Mi - Mn;
   double delta_e = pe_max + E_avg - Mi + Mn;
 
+  gsl_interp_accel *acc = gsl_interp_accel_alloc();
+  double delta_r = (RMAX - RMIN)/(1.0*NSPLINE);
+  double *r_array = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+
+  gsl_spline *f_spline_RE0 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM0 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE0 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM0 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
   gsl_spline *f_spline_RE2 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
   gsl_spline *f_spline_IM2 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
   double *f_array_RE2 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
@@ -1632,26 +1689,58 @@ int test_suite() {
   gsl_spline *f_spline_IM4 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
   double *f_array_RE4 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
   double *f_array_IM4 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  gsl_spline *f_spline_RE6 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM6 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE6 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM6 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  gsl_spline *f_spline_RE8 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM8 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE8 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM8 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
 
   for (int i = 0; i <= NSPLINE; i++) {
     double r = RMIN + i*delta_r;
     r_array[i] = r;
-    f_array_RE[i] = v_light_nu_RE(0, pe_max, alpha, delta_e, r);
-    f_array_IM[i] = v_light_nu_IM(0, pe_max, alpha, r);
+    f_array_RE0[i] = v_light_nu_RE(0, pe_max, alpha, delta_e, r);
+    f_array_IM0[i] = v_light_nu_IM(0, pe_max, alpha, r);
     f_array_RE2[i] = v_light_nu_RE(2, pe_max, alpha, delta_e, r);
     f_array_IM2[i] = v_light_nu_IM(2, pe_max, alpha, r);
     f_array_RE4[i] = v_light_nu_RE(4, pe_max, alpha, delta_e, r);
     f_array_IM4[i] = v_light_nu_IM(4, pe_max, alpha, r);
+    f_array_RE6[i] = v_light_nu_RE(6, pe_max, alpha, delta_e, r);
+    f_array_IM6[i] = v_light_nu_IM(6, pe_max, alpha, r);
+    f_array_RE8[i] = v_light_nu_RE(8, pe_max, alpha, delta_e, r);
+    f_array_IM8[i] = v_light_nu_IM(8, pe_max, alpha, r);
   }
 
-  gsl_spline_init(f_spline_RE, r_array, f_array_RE, NSPLINE + 1);
-  gsl_spline_init(f_spline_IM, r_array, f_array_IM, NSPLINE + 1);
+  gsl_spline_init(f_spline_RE0, r_array, f_array_RE0, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM0, r_array, f_array_IM0, NSPLINE + 1);
   gsl_spline_init(f_spline_RE2, r_array, f_array_RE2, NSPLINE + 1);
   gsl_spline_init(f_spline_IM2, r_array, f_array_IM2, NSPLINE + 1);
   gsl_spline_init(f_spline_RE4, r_array, f_array_RE4, NSPLINE + 1);
   gsl_spline_init(f_spline_IM4, r_array, f_array_IM4, NSPLINE + 1);
+  gsl_spline_init(f_spline_RE6, r_array, f_array_RE6, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM6, r_array, f_array_IM6, NSPLINE + 1);
+  gsl_spline_init(f_spline_RE8, r_array, f_array_RE8, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM8, r_array, f_array_IM8, NSPLINE + 1);
+
+  FILE *in_file;
+  int in1, in2, ij1, ij2, ij12, it12;
+  int in1p, in2p, ij1p, ij2p, ij12p, it12p;
+  double density;
 
 
+  double mat_RE_tot = 0;
+  double mat_IM_tot = 0;
+  double mat_RE, mat_IM;
+
+
+  printf("Performing closure sum:\n");
+  printf("Computing Fermi closure sum...\n");
+  double IFact0 = pow(-1, 2 + tf - ti)*clebsch_gordan(2, ti, tf, -2, mti, mtf)/sqrt(2.0*tf + 1)/sqrt(2.0*jf + 1);
+  
+  in_file = fopen("density_files/al27_na27_usda_J0_T2_0_0.dens", "r");
+ 
   while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
     if (fabs(density) < pow(10, -8)) {continue;}
@@ -1659,109 +1748,77 @@ int test_suite() {
       double m4_IM = 0.0;
       double mat_RE2 = 0.0;
       double mat_IM2 = 0.0;
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 0, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
 
-      compute_matrix_element_FJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE = 4.0*M_PI*m4_RE;
-      mat_IM = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE*density;
-      mat_IM_tot += mat_IM*density;
+          } else if (l1 == 4) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
 
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, 0, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-
-      //printf("%g, %g\n", mat_RE, mat_RE2);
-      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Fermi operator J = 0: %g, %g\n", mat_RE, mat_RE2); exit(0);}
-      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Fermi operator J = 0: %g, %g\n", mat_IM, mat_IM2); exit(0);}
-
-      compute_matrix_element_FJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
-      mat_RE = 4.0*M_PI*m4_RE;
-      mat_IM = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE*density;
-      mat_IM_tot += mat_IM*density*sqrt(5.0);
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 2, 0, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-
-//      printf("%g, %g\n", mat_RE, mat_RE2);
-      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Fermi operator J = 2: %g, %g\n", mat_RE, mat_RE2); exit(0);}
-      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Fermi operator J = 2: %g, %g\n", mat_IM, mat_IM2); exit(0);}
-
-      compute_matrix_element_FJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
-      mat_RE = 4.0*M_PI*m4_RE;
-      mat_IM = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE*density;
-      mat_IM_tot += mat_IM*density*sqrt(9.0);
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 4, 0, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-
-//      printf("%g, %g\n", mat_RE, mat_RE2);
-      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Fermi operator J = 4: %g, %g\n", mat_RE, mat_RE2); exit(0);}
-      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Fermi operator J = 4: %g, %g\n", mat_IM, mat_IM2); exit(0);}
-
-  }
-  fclose(in_file);
-  mat_IM_tot *= pow(-1, 2 + tf - ti)*clebsch_gordan(2, ti, tf, -2, mti, mtf)/sqrt(2.0*tf + 1)/sqrt(2.0*jf + 1);
-  printf("Fermi Checks Passed: J = 0 and generic J methods agree.\n");
-  printf("MF: %.20f\n", mat_IM_tot);
-  in_file = fopen("density_files/na19_f19_usdb_J2_T2_0_16.dens", "r");
-
-
-  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
-
-    if (fabs(density) < pow(10, -8)) {continue;}
-      double m4_RE = 0.0;
-      double m4_IM = 0.0;
-      double mat_RE2 = 0.0;
-      double mat_IM2 = 0.0;
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 0, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(-sqrt(5.0))*(-sqrt(2.0/21.0)/5.0);
-      mat_IM_tot += mat_IM2*density*(-sqrt(5.0))*(-sqrt(2.0/21.0)/5.0);
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, 2, 2, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(-sqrt(5.0))*(-sqrt(2.0/21.0)/5.0);
-      mat_IM_tot += mat_IM2*density*(-sqrt(5.0))*(-sqrt(2.0/21.0)/5.0);
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 2, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(-5.0*sqrt(2.0/7.0))*(-sqrt(2.0/21.0)/5.0);
-      mat_IM_tot += mat_IM2*density*(-5.0*sqrt(2.0/7.0))*(-sqrt(2.0/21.0)/5.0);
-
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 4, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(-3.0*sqrt(10.0/7.0))*(-sqrt(2.0/21.0)/5.0);
-      mat_IM_tot += mat_IM2*density*(-3.0*sqrt(10.0/7.0))*(-sqrt(2.0/21.0)/5.0);
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 2, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(-3.0*sqrt(10.0/7.0))*(-sqrt(2.0/21.0)/5.0);
-      mat_IM_tot += mat_IM2*density*(-3.0*sqrt(10.0/7.0))*(-sqrt(2.0/21.0)/5.0);
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 4, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(-30.0/sqrt(77.0))*(-sqrt(2.0/21.0)/5.0);
-      mat_IM_tot += mat_IM2*density*(-30.0/sqrt(77.0))*(-sqrt(2.0/21.0)/5.0);
-
-
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact0;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact0;
+        }
+     }
+ 
   }
   fclose(in_file);
 
-  printf("J = 2 MF: %.20f\n", mat_IM_tot);
+  printf("MF J = 0: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+  
+  in_file = fopen("density_files/al27_na27_usda_J2_T2_0_0.dens", "r");
 
-  in_file = fopen("density_files/na19_f19_usdb_J4_T2_0_16.dens", "r");
+  double IFact2 = pow(-1, 2 + tf - ti)*clebsch_gordan(2, ti, tf, -2, mti, mtf)/sqrt(2.0*tf + 1)*pow(-1, 2 + jf - ji)*clebsch_gordan(2, ji, jf, 0, 0.5, 0.5)/sqrt(2.0*jf + 1);
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 2, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+
+          } else if (l1 == 4) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
+
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact2;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact2;
+        }
+     }
+  }
+  fclose(in_file);
+
+  printf("MF J = 2: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+  in_file = fopen("density_files/al27_na27_usda_J4_T2_0_0.dens", "r");
+  double IFact4 = pow(-1, 2 + tf - ti)*clebsch_gordan(2, ti, tf, -2, mti, mtf)/sqrt(2.0*tf + 1)*pow(-1, 4 + jf - ji)*clebsch_gordan(4, ji, jf, 0, 0.5, 0.5)/sqrt(2.0*jf + 1);
 
 
   while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
@@ -1772,52 +1829,80 @@ int test_suite() {
       double mat_RE2 = 0.0;
       double mat_IM2 = 0.0;
 
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 0, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(3.0)*(sqrt(1.0/70.0)/3.0);
-      mat_IM_tot += mat_IM2*density*(3.0)*(sqrt(1.0/70.0)/3.0);
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 4, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
 
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, 4, 4, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(3.0)*(sqrt(1.0/70.0)/3.0);
-      mat_IM_tot += mat_IM2*density*(3.0)*(sqrt(1.0/70.0)/3.0);
+          } else if (l1 == 4) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
 
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 2, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(3.0*sqrt(10.0/7.0))*(sqrt(1.0/70.0)/3.0);
-      mat_IM_tot += mat_IM2*density*(3.0*sqrt(10.0/7.0))*(sqrt(1.0/70.0)/3.0);
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 4, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(30.0/sqrt(77.0))*(sqrt(1.0/70.0)/3.0);
-      mat_IM_tot += mat_IM2*density*(30.0/sqrt(77.0))*(sqrt(1.0/70.0)/3.0);
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 2, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(30.0/sqrt(77.0))*(sqrt(1.0/70.0)/3.0);
-      mat_IM_tot += mat_IM2*density*(30.0/sqrt(77.0))*(sqrt(1.0/70.0)/3.0);
-
-      compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 4, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
-      mat_RE_tot += mat_RE2*density*(81.0*sqrt(2.0/1001.0))*(sqrt(1.0/70.0)/3.0);
-      mat_IM_tot += mat_IM2*density*(81.0*sqrt(2.0/1001.0))*(sqrt(1.0/70.0)/3.0);
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact4;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact4;
+        }
+     }
 
   }
   fclose(in_file);
 
-  printf("J = 4 MF: %.20f\n", mat_IM_tot);
+  printf("MF J = 4: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+/*
+  in_file = fopen("density_files/al27_na27_usdb_J0_T2_0_0.dens", "r");
 
+  mat_RE_tot = 0;
+  mat_IM_tot = 0;
 
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
-  in_file = fopen("density_files/al27_na27_bw84_J0_T2_0_0.dens", "r");
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 0, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
 
+          } else if (l1 == 4) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
 
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact0;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact0;
+        }
+     }
+ 
+  }
+  fclose(in_file);
+
+  double mF_RE = mat_RE_tot;
+  double mF_IM = mat_IM_tot;
+
+  printf("MGT J = 0: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+  in_file = fopen("density_files/al27_na27_usdb_J2_T2_0_0.dens", "r");
 
   while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
@@ -1827,60 +1912,89 @@ int test_suite() {
       double mat_RE2 = 0.0;
       double mat_IM2 = 0.0;
 
-      compute_matrix_element_GTJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE = 4.0*M_PI*m4_RE;
-      mat_IM = 4.0*M_PI*m4_IM;
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 2, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
 
-      compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 0, 0, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
+          } else if (l1 == 4) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
 
-//      printf("%g, %g\n", mat_RE, mat_RE2);
-      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Gamow-Teller operator J = 0: %g, %g\n", mat_RE, mat_RE2); exit(0);}
-      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Gamow-Teller operator J = 0: %g, %g\n", mat_IM, mat_IM2); exit(0);}
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact2;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact2;
+        }
+     }
+  }
+  fclose(in_file);
 
-      compute_matrix_element_GTJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE = 4.0*M_PI*m4_RE;
-      mat_IM = 4.0*M_PI*m4_IM;
+  printf("MGT J = 2: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
 
-      compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 2, 2, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
+  in_file = fopen("density_files/al27_na27_usdb_J4_T2_0_0.dens", "r");
 
-//      printf("%g, %g\n", mat_RE, mat_RE2);
-      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Gamow-Teller operator J = 2: %g, %g\n", mat_RE, mat_RE2); exit(0);}
-      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Gamow-Teller operator J = 2: %g, %g\n", mat_IM, mat_IM2); exit(0);}
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
 
-      compute_matrix_element_GTJ(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE = 4.0*M_PI*m4_RE;
-      mat_IM = 4.0*M_PI*m4_IM;
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
 
-      compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, 4, 4, 0, f_spline_RE, f_spline_IM, acc, &m4_RE, &m4_IM); 
-      mat_RE2 = 4.0*M_PI*m4_RE;
-      mat_IM2 = 4.0*M_PI*m4_IM;
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 4, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
 
-      //printf("%g, %g\n", mat_RE, mat_RE2);
-      if (fabs(mat_RE - mat_RE2) > tol) {printf("Error in Full Gamow-Teller operator J = 4: %g, %g\n", mat_RE, mat_RE2); exit(0);}
-      if (fabs(mat_IM - mat_IM2) > tol) {printf("Error in Full Gamow-Teller operator J = 4: %g, %g\n", mat_IM, mat_IM2); exit(0);}
+          } else if (l1 == 4) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
+
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact4;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact4;
+        }
+     }
 
   }
+  fclose(in_file);
 
-  printf("Gamow-Teller Check Passed: J = 0 and generic J methods agree.\n");
+  printf("MGT J = 4: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+*/
 
   printf("Begin Closure Check...\n");
   FILE *list_file;
-  list_file = fopen("list_files/na19_f19.list", "r");
+  list_file = fopen("list_files/al27_mg27_na27.list", "r");
 
   int itn;
-  double Imat_tot = 0.0;
-  while(fscanf(list_file, "%d, %d, %f\n", &i_state, &itn, &excite) == 3) {
+
+  double Pmat_tot = 0.0;
+
+  while(fscanf(list_file, "%d, %f\n", &i_state, &excite) == 2) {
    if (i_state > 10000) {continue;}
-//    sprintf(density_file_i, "../SPEED-DMG/DMG/examples/output/al27_mg27_usdb_0_%d.dens", i_state);
-//    sprintf(density_file_f, "../SPEED-DMG/DMG/examples/output/mg27_na27_usdb_%d_0.dens", i_state);
-    sprintf(density_file_i, "../SPEED-DMG/DMG/examples/output/na19_ne19_usdb_0_%d.dens", i_state);
-    sprintf(density_file_f, "../SPEED-DMG/DMG/examples/output/ne19_f19_usdb_%d_16.dens", i_state);
-    tn = itn/2.0;
-    double kt = pe_max;
+   if (excite > 25.0) {continue;}
+    sprintf(density_file_i, "../SPEED-DMG/DMG/examples/output/al27_mg27_usdb_0_%d.dens", i_state);
+    sprintf(density_file_f, "../SPEED-DMG/DMG/examples/output/mg27_na27_usdb_%d_0.dens", i_state);
+//    tn = itn/2.0;
+    double kt = pe_max;// - excite;
 //    kt = 0.0;
     excite = E_avg; 
     double qt = M_MUON - excite + Mi - Mn;
@@ -1888,20 +2002,668 @@ int test_suite() {
     double IFact_i = pow(-1, 1 - ti + tn)*clebsch_gordan(1, ti, tn, -1, mti, mtn)/sqrt(2.0*tn + 1);
     double IFact_f = pow(-1, 1 - tn + tf)*clebsch_gordan(1, tn, tf, -1, mtn, mtf)/sqrt(2.0*tf + 1);
     double mat = compute_total_matrix_element_F1_double(density_file_i, density_file_f, qt, kt)*IFact_i*IFact_f*qt*RNUC/HBARC/(4*M_PI*M_PI)*(-M_PI);
-    double Imat = compute_total_matrix_element_F1_double(density_file_i, density_file_f, 0.0, 0.0)*IFact_i*IFact_f;
-//    Imat_tot += Imat;
     total_mat += mat;
+    double Pmat = 0.0;
+    double deltaQ = 3.1;
+    for (int iq = 0; iq < 200; iq++) {
+      double qP = iq*deltaQ;
+      Pmat += compute_total_matrix_element_F1_double(density_file_i, density_file_f, qP, kt)*IFact_i*IFact_f*RNUC/HBARC/(4*M_PI*M_PI)*qP/(qP - M_MUON + excite - Mi + Mn)*deltaQ;
+  //    printf("Progress: %g %g\n", qP, Pmat);
+    }
+    Pmat_tot += Pmat;
 
-//    printf("%d %g %g %g\n", i_state, excite, mat, total_mat);
+    printf("%d %g %g %g %g %g\n", i_state, excite, mat, total_mat, Pmat, Pmat_tot);
   }
-  printf("Total: %.20f %.20f\n", total_mat, Imat_tot);
+  printf("Total: %.20f\n", total_mat);
 
-  gsl_spline_free(f_spline_RE);
-  gsl_spline_free(f_spline_IM);
+  return;
+}
+
+void compute_mu2p_transitions() {
+  printf("\n");
+  printf("Begin Mu2p Calculations:\n");
+  printf("\n");
+  printf("Computing Al27(gs) -> Na27(gs):\n");
+
+  printf("    Light neutrino exchange: \n");
+  printf("-----------------------------\n");
+  printf("SM Interaction: BW84\n");
+
+  char density_file_i[250];
+  char density_file_f[250];
+  int i_state, i_zero;
+  float excite;
+
+  double Mi = 26981.5;
+  double Mn = 26984.3;
+
+  double Ebind = 0.463;
+
+  double total_mat = 0;
+
+  double E_avg = 10.0;
+  
+  double ti = 0.5;
+  double tf = 2.5;
+  double ji = 2.5;
+  double jf = 2.5;
+  double mti = -0.5;
+  double mtf = -2.5;
+ 
+  double pe_max = 94.5;
+  double tn = 1.5;
+  double mtn = -1.5;
+  double qt = 0.0;
+  //pe_max = 0.0;
+
+  gsl_interp_accel *acc = gsl_interp_accel_alloc();
+  double delta_r = (RMAX - RMIN)/(1.0*NSPLINE);
+  double *r_array = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+
+  gsl_spline *f_spline_RE0 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM0 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE0 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM0 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  gsl_spline *f_spline_RE2 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM2 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE2 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM2 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  gsl_spline *f_spline_RE4 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM4 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE4 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM4 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  gsl_spline *f_spline_RE6 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM6 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE6 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM6 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  gsl_spline *f_spline_RE8 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  gsl_spline *f_spline_IM8 = gsl_spline_alloc(gsl_interp_cspline, NSPLINE + 1);
+  double *f_array_RE8 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+  double *f_array_IM8 = (double*) malloc(sizeof(double)*(NSPLINE + 1));
+
+  FILE *in_file;
+  int in1, in2, ij1, ij2, ij12, it12;
+  int in1p, in2p, ij1p, ij2p, ij12p, it12p;
+  double density;
+
+
+  double mat_RE_tot = 0;
+  double mat_IM_tot = 0;
+  double mat_RE, mat_IM;
+
+
+  FILE *list_file;
+  list_file = fopen("al27_na27_usdb_J25.list", "r");
+
+  char density_file[250];
+  double m_sq_tot = 0.0; 
+  while(fscanf(list_file, "%d, %f\n", &i_state, &excite) == 2) {
+
+    qt = pe_max - excite;;
+   
+    double alpha = M_MUON - E_avg + Mi - Mn;
+    double delta_e = pe_max + E_avg - Mi + Mn;
+
+    mat_RE_tot = 0;
+    mat_IM_tot = 0;
+
+
+    for (int i = 0; i <= NSPLINE; i++) {
+      double r = RMIN + i*delta_r;
+      r_array[i] = r;
+      f_array_RE0[i] = v_light_nu_RE(0, pe_max, alpha, delta_e, r);
+      f_array_IM0[i] = v_light_nu_IM(0, pe_max, alpha, r);
+      f_array_RE2[i] = v_light_nu_RE(2, pe_max, alpha, delta_e, r);
+      f_array_IM2[i] = v_light_nu_IM(2, pe_max, alpha, r);
+      f_array_RE4[i] = v_light_nu_RE(4, pe_max, alpha, delta_e, r);
+      f_array_IM4[i] = v_light_nu_IM(4, pe_max, alpha, r);
+      f_array_RE6[i] = v_light_nu_RE(6, pe_max, alpha, delta_e, r);
+      f_array_IM6[i] = v_light_nu_IM(6, pe_max, alpha, r);
+      f_array_RE8[i] = v_light_nu_RE(8, pe_max, alpha, delta_e, r);
+      f_array_IM8[i] = v_light_nu_IM(8, pe_max, alpha, r);
+    }
+
+    gsl_spline_init(f_spline_RE0, r_array, f_array_RE0, NSPLINE + 1);
+    gsl_spline_init(f_spline_IM0, r_array, f_array_IM0, NSPLINE + 1);
+    gsl_spline_init(f_spline_RE2, r_array, f_array_RE2, NSPLINE + 1);
+    gsl_spline_init(f_spline_IM2, r_array, f_array_IM2, NSPLINE + 1);
+    gsl_spline_init(f_spline_RE4, r_array, f_array_RE4, NSPLINE + 1);
+    gsl_spline_init(f_spline_IM4, r_array, f_array_IM4, NSPLINE + 1);
+    gsl_spline_init(f_spline_RE6, r_array, f_array_RE6, NSPLINE + 1);
+    gsl_spline_init(f_spline_IM6, r_array, f_array_IM6, NSPLINE + 1);
+    gsl_spline_init(f_spline_RE8, r_array, f_array_RE8, NSPLINE + 1);
+    gsl_spline_init(f_spline_IM8, r_array, f_array_IM8, NSPLINE + 1);
+
+ 
+    double IFact0 = pow(-1, 2 + tf - ti)*clebsch_gordan(2, ti, tf, -2, mti, mtf)/sqrt(2.0*tf + 1)/sqrt(2.0*jf + 1);
+  
+    sprintf(density_file, "../SPEED-DMG/DMG/examples/output/al27_na27_usdb_J0_T2_0_%d.dens", i_state);
+    in_file = fopen(density_file, "r");
+ 
+    while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+      if (fabs(density) < pow(10, -8)) {continue;}
+        double m4_RE = 0.0;
+        double m4_IM = 0.0;
+        double mat_RE2 = 0.0;
+        double mat_IM2 = 0.0;
+        for (int l1 = 0; l1 <= 8; l1 += 2) {
+          for (int l2 = 0; l2 <= 8; l2 += 2) {
+            double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 0, 0, 0, 0);
+            if (cg_fact_l1l2 == 0.0) {continue;}
+            if (l1 == 0) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 2) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 4) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 6) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 8) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+            }
+            mat_RE = 4.0*M_PI*m4_RE;
+            mat_IM = 4.0*M_PI*m4_IM;
+            mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact0;
+            mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact0;
+          }
+       }
+ 
+    }
+    fclose(in_file);
+
+    printf("MF J = 0: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+    sprintf(density_file, "../SPEED-DMG/DMG/examples/output/al27_na27_usdb_J2_T2_0_%d.dens", i_state);
+    in_file = fopen(density_file, "r");
+
+    double IFact2 = pow(-1, 2 + tf - ti)*clebsch_gordan(2, ti, tf, -2, mti, mtf)/sqrt(2.0*tf + 1)*pow(-1, 2 + jf - ji)*clebsch_gordan(2, ji, jf, 0, 0.5, 0.5)/sqrt(2.0*jf + 1);
+
+    while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+      if (fabs(density) < pow(10, -8)) {continue;}
+        double m4_RE = 0.0;
+        double m4_IM = 0.0;
+        double mat_RE2 = 0.0;
+        double mat_IM2 = 0.0;
+
+        for (int l1 = 0; l1 <= 8; l1 += 2) {
+          for (int l2 = 0; l2 <= 8; l2 += 2) {
+            double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 2, 0, 0, 0);
+	    if (cg_fact_l1l2 == 0.0) {continue;}
+	    if (l1 == 0) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 2) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+
+            } else if (l1 == 4) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 6) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 8) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+            }
+
+            mat_RE = 4.0*M_PI*m4_RE;
+            mat_IM = 4.0*M_PI*m4_IM;
+            mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact2;
+            mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact2;
+          }
+       }
+    }
+    fclose(in_file);
+
+    printf("MF J = 2: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+    sprintf(density_file, "../SPEED-DMG/DMG/examples/output/al27_na27_usdb_J4_T2_0_%d.dens", i_state);
+    in_file = fopen(density_file, "r");
+
+    double IFact4 = pow(-1, 2 + tf - ti)*clebsch_gordan(2, ti, tf, -2, mti, mtf)/sqrt(2.0*tf + 1)*pow(-1, 4 + jf - ji)*clebsch_gordan(4, ji, jf, 0, 0.5, 0.5)/sqrt(2.0*jf + 1);
+
+
+    while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+      if (fabs(density) < pow(10, -8)) {continue;}
+        double m4_RE = 0.0;
+        double m4_IM = 0.0;
+        double mat_RE2 = 0.0;
+        double mat_IM2 = 0.0;
+
+        for (int l1 = 0; l1 <= 8; l1 += 2) {
+          for (int l2 = 0; l2 <= 8; l2 += 2) {
+            double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 4, 0, 0, 0);
+            if (cg_fact_l1l2 == 0.0) {continue;}
+            if (l1 == 0) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 2) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 4) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 6) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 8) {
+              compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+            }
+
+            mat_RE = 4.0*M_PI*m4_RE;
+            mat_IM = 4.0*M_PI*m4_IM;
+            mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact4;
+            mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact4;
+          }
+       }
+    }
+    fclose(in_file);
+
+    printf("MF J = 4: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+    sprintf(density_file, "../SPEED-DMG/DMG/examples/output/al27_na27_usdb_J0_T2_0_%d.dens", i_state);
+    in_file = fopen(density_file, "r");
+
+    double mF_RE = mat_RE_tot;
+    double mF_IM = mat_IM_tot;
+
+    mat_RE_tot = 0;
+    mat_IM_tot = 0;
+
+    while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+      if (fabs(density) < pow(10, -8)) {continue;}
+        double m4_RE = 0.0;
+        double m4_IM = 0.0;
+        double mat_RE2 = 0.0;
+        double mat_IM2 = 0.0;
+        for (int l1 = 0; l1 <= 8; l1 += 2) {
+          for (int l2 = 0; l2 <= 8; l2 += 2) {
+            double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 0, 0, 0, 0);
+	    if (cg_fact_l1l2 == 0.0) {continue;}
+	    if (l1 == 0) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 2) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 4) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 6) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 8) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+            }
+
+            mat_RE = 4.0*M_PI*m4_RE;
+            mat_IM = 4.0*M_PI*m4_IM;
+            mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact0;
+            mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact0;
+          }
+       } 
+    }
+    fclose(in_file);
+
+    printf("MGT J = 0: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+    sprintf(density_file, "../SPEED-DMG/DMG/examples/output/al27_na27_usdb_J2_T2_0_%d.dens", i_state);
+    in_file = fopen(density_file, "r");
+
+    while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+      if (fabs(density) < pow(10, -8)) {continue;}
+        double m4_RE = 0.0;
+        double m4_IM = 0.0;
+        double mat_RE2 = 0.0;
+        double mat_IM2 = 0.0;
+
+        for (int l1 = 0; l1 <= 8; l1 += 2) {
+          for (int l2 = 0; l2 <= 8; l2 += 2) {
+            double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 2, 0, 0, 0);
+            if (cg_fact_l1l2 == 0.0) {continue;}
+            if (l1 == 0) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 2) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 4) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 6) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 8) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+            }
+
+            mat_RE = 4.0*M_PI*m4_RE;
+            mat_IM = 4.0*M_PI*m4_IM;
+            mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact2;
+            mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact2;
+          }
+       }
+    }
+    fclose(in_file);
+
+  printf("MGT J = 2: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+    sprintf(density_file, "../SPEED-DMG/DMG/examples/output/al27_na27_usdb_J4_T2_0_%d.dens", i_state);
+    in_file = fopen(density_file, "r");
+
+
+    while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+      if (fabs(density) < pow(10, -8)) {continue;}
+        double m4_RE = 0.0;
+        double m4_IM = 0.0;
+        double mat_RE2 = 0.0;
+        double mat_IM2 = 0.0;
+
+        for (int l1 = 0; l1 <= 8; l1 += 2) {
+          for (int l2 = 0; l2 <= 8; l2 += 2) {
+            double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 4, 0, 0, 0);
+            if (cg_fact_l1l2 == 0.0) {continue;}
+	    if (l1 == 0) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 2) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 4) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	    } else if (l1 == 6) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+            } else if (l1 == 8) {
+              compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+            }
+
+            mat_RE = 4.0*M_PI*m4_RE;
+            mat_IM = 4.0*M_PI*m4_IM;
+            mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact4;
+            mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact4;
+          }
+       }
+    }
+    fclose(in_file);
+
+    printf("MGT J = 4: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+ 
+    double mGT_RE = mat_RE_tot;
+    double mGT_IM = mat_IM_tot;
+
+    double fVA = 1.0/1.25; // Ratio of fV/fA
+
+    double MSq = 1.0/(2.0*ji + 1.0)*(pow(pow(fVA, 2.0)*mF_RE - mGT_RE, 2.0) + pow(pow(fVA, 2.0)*mF_IM - mGT_IM, 2.0));
+
+    m_sq_tot += MSq;
+
+    printf("Ex: %g MSq: %g MSqTot: %g \n", excite, MSq, m_sq_tot);
+  }
+  exit(0);
+/*
+  for (int i = 0; i <= NSPLINE; i++) {
+    double r = RMIN + i*delta_r;
+    r_array[i] = r;
+    f_array_RE0[i] = v_NUC(0, pe_max, r);
+    f_array_IM0[i] = 0.0;
+    f_array_RE2[i] = v_NUC(2, pe_max, r);
+    f_array_IM2[i] = 0.0;
+    f_array_RE4[i] = v_NUC(4, pe_max, r);
+    f_array_IM4[i] = 0.0;
+    f_array_RE6[i] = v_NUC(6, pe_max, r);
+    f_array_IM6[i] = 0.0;
+    f_array_RE8[i] = v_NUC(8, pe_max, r);
+    f_array_IM8[i] = 0.0;
+  }
+
+  gsl_spline_init(f_spline_RE0, r_array, f_array_RE0, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM0, r_array, f_array_IM0, NSPLINE + 1);
+  gsl_spline_init(f_spline_RE2, r_array, f_array_RE2, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM2, r_array, f_array_IM2, NSPLINE + 1);
+  gsl_spline_init(f_spline_RE4, r_array, f_array_RE4, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM4, r_array, f_array_IM4, NSPLINE + 1);
+  gsl_spline_init(f_spline_RE6, r_array, f_array_RE6, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM6, r_array, f_array_IM6, NSPLINE + 1);
+  gsl_spline_init(f_spline_RE8, r_array, f_array_RE8, NSPLINE + 1);
+  gsl_spline_init(f_spline_IM8, r_array, f_array_IM8, NSPLINE + 1);
+
+  mat_RE_tot = 0;
+  mat_IM_tot = 0;
+
+  in_file = fopen("density_files/ca48_ti48_kb3g_J0_T2_0_0.dens", "r");
+ 
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 0, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+
+          } else if (l1 == 4) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
+
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact0;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact0;
+        }
+     }
+  }
+  fclose(in_file);
+
+  printf("MF J = 0: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+  
+  in_file = fopen("density_files/al27_na27_bw84_J2_T2_0_0.dens", "r");
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 2, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+
+          } else if (l1 == 4) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
+
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact2;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact2;
+        }
+     }
+  }
+  fclose(in_file);
+
+  printf("MF J = 2: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+  in_file = fopen("density_files/al27_na27_bw84_J4_T2_0_0.dens", "r");
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 4, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+
+          } else if (l1 == 4) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_FJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
+
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact4;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact4;
+        }
+     }
+
+  }
+  fclose(in_file);
+
+  printf("MF J = 4: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+  in_file = fopen("density_files/ca48_ti48_kb3g_J0_T2_0_0.dens", "r");
+
+  mF_RE = mat_RE_tot;
+  mF_IM = mat_IM_tot;
+
+  mat_RE_tot = 0;
+  mat_IM_tot = 0;
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 0, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+
+          } else if (l1 == 4) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 0, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
+
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact0;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact0;
+        }
+     }
+ 
+  }
+  fclose(in_file);
+
+  printf("MGT J = 0: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+  in_file = fopen("density_files/al27_na27_bw84_J2_T2_0_0.dens", "r");
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 2, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+
+          } else if (l1 == 4) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 2, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
+
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact2;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact2;
+        }
+     }
+  }
+  fclose(in_file);
+
+  printf("MGT J = 2: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+
+  in_file = fopen("density_files/al27_na27_bw84_J4_T2_0_0.dens", "r");
+
+  while(fscanf(in_file, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%lf\n", &in1p, &ij1p, &in2p, &ij2p, &ij12p, &it12p, &in1, &ij1, &in2, &ij2, &ij12, &it12, &density) == 13) {
+
+    if (fabs(density) < pow(10, -8)) {continue;}
+      double m4_RE = 0.0;
+      double m4_IM = 0.0;
+      double mat_RE2 = 0.0;
+      double mat_IM2 = 0.0;
+
+      for (int l1 = 0; l1 <= 8; l1 += 2) {
+        for (int l2 = 0; l2 <= 8; l2 += 2) {
+          double cg_fact_l1l2 = sqrt(2.0*l1 + 1)*sqrt(2.0*l2 + 1)*pow(-1, (l1 + l2)/2)*clebsch_gordan(l1, l2, 4, 0, 0, 0);
+	  if (cg_fact_l1l2 == 0.0) {continue;}
+	  if (l1 == 0) {
+            compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE0, f_spline_IM0, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 2) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE2, f_spline_IM2, acc, &m4_RE, &m4_IM); 
+
+          } else if (l1 == 4) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE4, f_spline_IM4, acc, &m4_RE, &m4_IM); 
+	  } else if (l1 == 6) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE6, f_spline_IM6, acc, &m4_RE, &m4_IM); 
+          } else if (l1 == 8) {
+compute_matrix_element_GTJFull(in1p, ij1p, in2p, ij2p, ij12p, in1, ij1, in2, ij2, ij12, it12, qt, l1, l2, 4, f_spline_RE8, f_spline_IM8, acc, &m4_RE, &m4_IM); 
+          }
+
+          mat_RE = 4.0*M_PI*m4_RE;
+          mat_IM = 4.0*M_PI*m4_IM;
+          mat_RE_tot += mat_RE*density*cg_fact_l1l2*IFact4;
+          mat_IM_tot += mat_IM*density*cg_fact_l1l2*IFact4;
+        }
+     }
+
+  }
+  fclose(in_file);
+
+  printf("MGT J = 4: RE: %.6f IM: %.6f\n", mat_RE_tot, mat_IM_tot);
+  
+  mGT_RE = mat_RE_tot;
+  mGT_IM = mat_IM_tot;
+
+  MSq = 1.0/(2.0*ji + 1.0)*(pow(pow(fVA, 2.0)*mF_RE - mGT_RE, 2.0) + pow(pow(fVA, 2.0)*mF_IM - mGT_IM, 2.0));
+
+  printf("MSq: %g\n", MSq);
+*/
+  gsl_spline_free(f_spline_RE0);
+  gsl_spline_free(f_spline_IM0);
   gsl_interp_accel_free(acc);  
 
 
-  return error;
+  return;
 }
-
-

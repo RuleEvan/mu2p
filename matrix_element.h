@@ -14,7 +14,7 @@ void compute_matrix_element_FJ(int in1p, int ij1p, int in2p, int ij2p, int ij12p
 void filter_spectrum(char* density_file, double J, double T);
 
 double compute_total_matrix_element_GT0(char* density_file);
-double compute_matrix_element_GT0(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int in1, int ij1, int in2, int ij2, int ij12, int it12); 
+double compute_matrix_element_GT0(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int it12p, int in1, int ij1, int in2, int ij2, int ij12, int it12); 
 
 double compute_total_matrix_element_GT2(char* density_file);
 double compute_matrix_element_GT2(int in1p, int ij1p, int in2p, int ij2p, int ij12p, int in1, int ij1, int in2, int ij2, int ij12, int it12); 
@@ -32,7 +32,9 @@ int get_j(int index);
 double cg_fact(int l1, int l2, int k, double Ji, double Jf, int iJn);
 
 int test_suite();
-
+void compute_mu2p_transitions();
+void perform_closure_analysis();
+double compute_total_matrix_element_GT1_double(char* density_file_i, char* density_file_f, double qt, double kt); 
 double compute_matrix_element_F1(int ina, int ija, int inb, int ijb, int L, double q);
 double compute_matrix_element_F1_double(int ina, int ija, int inb, int ijb, int L1, double kt, int L2, double qt, int L);
 

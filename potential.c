@@ -36,10 +36,13 @@ double compute_rel_potential(double np, double lp, double n, double l, int J, do
 double compute_rel_potential_spline(double np, double lp, double n, double l, gsl_spline *f_spline, gsl_interp_accel *acc) {
   // Sum the required Talmi integrals with the corresponding B coefficients
   double v = 0;
-  for (int ip = l + lp; ip <= l + lp + 2*n + 2*np; ip += 2) {
+  for (int ip = l + lp; ip <= (int) (l + lp + 2*n + 2*np); ip += 2) {
     double p = ip/2.0;
     v += b_coeff(n, l, np, lp, p)*talmi_rel_spline(p, f_spline, acc);
   }
+//  if (v != 0) {
+//    printf("np: %g lp: %g n: %g l: %g M: %g\n", np, lp, n, l, v);
+//  } 
 
   return v;
 }
@@ -108,7 +111,7 @@ double talmi_rel_spline(double p, gsl_spline *f_spline, gsl_interp_accel *acc) {
   // Set the limits of the integral and the error tolerance
   double r_min = 0.0001;
   double r_max = 10.0;
-  double tol = pow(10, -8);
+  double tol = pow(10, -5);
   double I_p = RombergSpline(&talmi_integrand_spline, r_min, r_max, p, f_spline, acc, tol);
   I_p *= 2.0/gsl_sf_gamma(p + 1.5);
 
@@ -163,7 +166,9 @@ double talmi_integrand_spline(double p, gsl_spline *f_spline, gsl_interp_accel *
   
   if (COR_FAC == 1) {
     double beta = exp(-1.1*pow(B_OSC*q*sqrt(2.0), 2))*(1.0 - 0.68*pow(B_OSC*q*sqrt(2.0),2.0));
-    v *= pow(1.0 - beta, 1.0);
+//  double beta = exp(-1.52*pow(B_OSC*q*sqrt(2.0), 2))*(1.0 - 1.88*pow(B_OSC*q*sqrt(2.0),2.0));
+
+    v *= pow(1.0 - beta, 2.0);
   }
 
   v *= gsl_spline_eval(f_spline, q, acc);
@@ -235,7 +240,7 @@ double talmi_integrand(double q, double p, int iv) {
 double v_NUC(int J, double pe, double r) {
   r *= sqrt(2.0)*B_OSC;
 
-  double xA = 850.0*r/HBARC;
+  double xA = 1040.0*r/HBARC;
 
   double v = 1.0/48.0*xA*(pow(xA, 2) + 3.0*xA + 3.0)*exp(-xA);
   v *= RNUC/r*gsl_sf_bessel_jl(J, pe*r/(2*HBARC));
@@ -248,7 +253,8 @@ double v_light_nu_RE(int J, double pe, double alpha, double delta_e, double r) {
   double a = alpha*r/HBARC;
   double d = delta_e*r/HBARC;
   double v = 2.0*cos(a) - 1.0 + 1.0/M_PI*(-M_PI * cos(a) - 2.0*sin(a)*gsl_sf_Ci(a));
-  v += 1.0/M_PI*(2.0*gsl_sf_Ci(d)*sin(d) + 2.0*cos(a)*gsl_sf_Si(a) + cos(d)*(M_PI - 2.0*gsl_sf_Si(d)) + M_PI);
+  //v += 1.0/M_PI*(2.0*gsl_sf_Ci(d)*sin(d) + 2.0*cos(a)*gsl_sf_Si(a) + cos(d)*(M_PI - 2.0*gsl_sf_Si(d)) + M_PI);
+  v += 1.0/M_PI*(2.0*gsl_sf_Ci(d)*sin(d)*0.0 + 2.0*cos(a)*gsl_sf_Si(a) + 0.0*cos(d)*(M_PI - 2.0*gsl_sf_Si(d)) + M_PI);
   v *= RNUC/r*gsl_sf_bessel_jl(J, pe*r/(2*HBARC));
 
   return v;
